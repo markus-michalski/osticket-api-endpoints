@@ -1,0 +1,23 @@
+# API Endpoints Plugin - Release Include File
+# Files to include in release builds
+
+# Core plugin files
+plugin.php
+class.ApiEndpointsPlugin.php
+config.php
+
+# Controllers
+controllers/
+controllers/ExtendedTicketApiController.php
+
+# API files
+api/
+api/tickets-update.php
+api/tickets-get.php
+api/tickets-search.php
+
+# Documentation
+README.md
+CHANGELOG.md
+LICENSE
+api_endpoint_description.md

@@ -1,0 +1,29 @@
+{
+    "name": "markus-michalski/osticket-api-endpoints",
+    "description": "Extended API endpoints for osTicket with format, departmentId and parentTicketId support",
+    "type": "library",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "Markus Michalski",
+            "email": "info@markus-michalski.net"
+        }
+    ],
+    "require": {
+        "php": ">=7.4"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.5"
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "test:unit": "phpunit --testsuite Unit",
+        "test:integration": "phpunit --testsuite Integration",
+        "test:coverage": "phpunit --coverage-html coverage"
+    }
+}
