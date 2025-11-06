@@ -355,15 +355,21 @@ if (!class_exists('API')) {
             $this->permissions = $data['permissions'] ?? [];
 
             // Store permissions in ht array to match real osTicket API class
+            // Check both $data and $this->permissions for consistency
             $this->ht = [
                 'apikey' => $data['key'],
-                'can_create_tickets' => $this->permissions['can_create_tickets'] ?? false,
-                'can_read_tickets' => $data['can_read_tickets'] ?? false,
-                'can_update_tickets' => $data['can_update_tickets'] ?? false,
-                'can_search_tickets' => $data['can_search_tickets'] ?? false,
-                'can_delete_tickets' => $data['can_delete_tickets'] ?? false,
-                'can_read_stats' => $data['can_read_stats'] ?? false,
+                'can_create_tickets' => $this->permissions['can_create_tickets'] ?? ($data['can_create_tickets'] ?? false),
+                'can_read_tickets' => $this->permissions['can_read_tickets'] ?? ($data['can_read_tickets'] ?? false),
+                'can_update_tickets' => $this->permissions['can_update_tickets'] ?? ($data['can_update_tickets'] ?? false),
+                'can_search_tickets' => $this->permissions['can_search_tickets'] ?? ($data['can_search_tickets'] ?? false),
+                'can_delete_tickets' => $this->permissions['can_delete_tickets'] ?? ($data['can_delete_tickets'] ?? false),
+                'can_read_stats' => $this->permissions['can_read_stats'] ?? ($data['can_read_stats'] ?? false),
+                'can_manage_subtickets' => $this->permissions['can_manage_subtickets'] ?? ($data['can_manage_subtickets'] ?? false),
             ];
+        }
+
+        public static function lookupKey($key) {
+            return self::$mockData[$key] ?? null;
         }
 
         public function getKey() { return $this->key; }

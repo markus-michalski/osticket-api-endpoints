@@ -163,6 +163,66 @@ class ApiEndpointsConfig extends PluginConfig {
     }
 
     /**
+     * Get list of allowed permission columns for validation
+     *
+     * @return array List of allowed column names
+     */
+    private function getAllowedPermissionColumns() {
+        return array(
+            'can_create_tickets',
+            'can_update_tickets',
+            'can_read_tickets',
+            'can_search_tickets',
+            'can_delete_tickets',
+            'can_read_stats',
+            'can_manage_subtickets'
+        );
+    }
+
+    /**
+     * Check if a column exists in the API key table
+     *
+     * @param string $columnName Column name to check
+     * @return bool True if column exists
+     */
+    private function columnExists($columnName) {
+        return self::columnExistsStatic($columnName);
+    }
+
+    /**
+     * Static version: Check if a column exists in the API key table
+     *
+     * @param string $columnName Column name to check
+     * @return bool True if column exists
+     */
+    private static function columnExistsStatic($columnName) {
+        // Get allowed columns statically
+        $allowedColumns = array(
+            'can_create_tickets',
+            'can_update_tickets',
+            'can_read_tickets',
+            'can_search_tickets',
+            'can_delete_tickets',
+            'can_read_stats',
+            'can_manage_subtickets'
+        );
+
+        // Validate column name against whitelist
+        if (!in_array($columnName, $allowedColumns)) {
+            return false;
+        }
+
+        // Use parameterized query with escaped column name
+        $sql = sprintf(
+            "SHOW COLUMNS FROM %s LIKE '%s'",
+            API_KEY_TABLE,
+            db_real_escape($columnName)
+        );
+        $result = db_query($sql);
+        return ($result && db_num_rows($result) > 0);
+    }
+
+    /**
      * Pre-save validation and processing
      *
      * @param array $config Configuration array (by reference)
@@ -171,27 +231,14 @@ class ApiEndpointsConfig extends PluginConfig {
      */
     function pre_save(&$config = [], &$errors = []) {
         // Handle API Key permissions from $_POST (not in $config because FreeTextField doesn't register fields)
-        if (isset($_POST['api_key_create_permissions']) || isset($_POST['api_key_update_permissions']) || isset($_POST['api_key_read_permissions']) || isset($_POST['api_key_search_permissions']) || isset($_POST['api_key_delete_permissions'])) {
-            // Check which permission columns exist
-            $checkUpdateSql = "SHOW COLUMNS FROM " . API_KEY_TABLE . " LIKE 'can_update_tickets'";
-            $checkUpdateResult = db_query($checkUpdateSql);
-            $hasUpdateColumn = ($checkUpdateResult && db_num_rows($checkUpdateResult) > 0);
-
-            $checkReadSql = "SHOW COLUMNS FROM " . API_KEY_TABLE . " LIKE 'can_read_tickets'";
-            $checkReadResult = db_query($checkReadSql);
-            $hasReadColumn = ($checkReadResult && db_num_rows($checkReadResult) > 0);
-
-            $checkSearchSql = "SHOW COLUMNS FROM " . API_KEY_TABLE . " LIKE 'can_search_tickets'";
-            $checkSearchResult = db_query($checkSearchSql);
-            $hasSearchColumn = ($checkSearchResult && db_num_rows($checkSearchResult) > 0);
-
-            $checkDeleteSql = "SHOW COLUMNS FROM " . API_KEY_TABLE . " LIKE 'can_delete_tickets'";
-            $checkDeleteResult = db_query($checkDeleteSql);
-            $hasDeleteColumn = ($checkDeleteResult && db_num_rows($checkDeleteResult) > 0);
-
-            $checkStatsSql = "SHOW COLUMNS FROM " . API_KEY_TABLE . " LIKE 'can_read_stats'";
-            $checkStatsResult = db_query($checkStatsSql);
-            $hasStatsColumn = ($checkStatsResult && db_num_rows($checkStatsResult) > 0);
+        if (isset($_POST['api_key_create_permissions']) || isset($_POST['api_key_update_permissions']) || isset($_POST['api_key_read_permissions']) || isset($_POST['api_key_search_permissions']) || isset($_POST['api_key_delete_permissions']) || isset($_POST['api_key_subticket_permissions'])) {
+            // Check which permission columns exist using helper method
+            $hasUpdateColumn = $this->columnExists('can_update_tickets');
+            $hasReadColumn = $this->columnExists('can_read_tickets');
+            $hasSearchColumn = $this->columnExists('can_search_tickets');
+            $hasDeleteColumn = $this->columnExists('can_delete_tickets');
+            $hasStatsColumn = $this->columnExists('can_read_stats');
+            $hasSubticketColumn = $this->columnExists('can_manage_subtickets');
 
             // Get all API keys
             $result = db_query('SELECT id FROM ' . API_KEY_TABLE);
@@ -214,6 +261,9 @@ class ApiEndpointsConfig extends PluginConfig {
             $statsPermissions = isset($_POST['api_key_stats_permissions'])
                 ? $_POST['api_key_stats_permissions']
                 : array();
+            $subticketPermissions = isset($_POST['api_key_subticket_permissions'])
+                ? $_POST['api_key_subticket_permissions']
+                : array();
 
             while ($row = db_fetch_array($result)) {
                 $apiKeyId = (int)$row['id'];
@@ -225,28 +275,38 @@ class ApiEndpointsConfig extends PluginConfig {
                 $canSearch = isset($searchPermissions[$apiKeyId]) ? 1 : 0;
                 $canDelete = isset($deletePermissions[$apiKeyId]) ? 1 : 0;
                 $canStats = isset($statsPermissions[$apiKeyId]) ? 1 : 0;
+                $canSubticket = isset($subticketPermissions[$apiKeyId]) ? 1 : 0;
 
-                // Build UPDATE SQL based on which columns exist
-                // Cast to int for SQL safety (prevent injection)
-                $setClauses = array(sprintf('can_create_tickets = %d', (int)$canCreate));
+                // Build UPDATE SQL with validated columns and escaped values
+                // Using backticks for column names and casting values to int for SQL safety
+                $setClauses = array();
+
+                // Always update can_create_tickets (it should always exist)
+                $setClauses[] = sprintf('`can_create_tickets` = %d', (int)$canCreate);
+
+                // Add other columns only if they exist (validated through whitelist)
                 if ($hasUpdateColumn) {
-                    $setClauses[] = sprintf('can_update_tickets = %d', (int)$canUpdate);
+                    $setClauses[] = sprintf('`can_update_tickets` = %d', (int)$canUpdate);
                 }
                 if ($hasReadColumn) {
-                    $setClauses[] = sprintf('can_read_tickets = %d', (int)$canRead);
+                    $setClauses[] = sprintf('`can_read_tickets` = %d', (int)$canRead);
                 }
                 if ($hasSearchColumn) {
-                    $setClauses[] = sprintf('can_search_tickets = %d', (int)$canSearch);
+                    $setClauses[] = sprintf('`can_search_tickets` = %d', (int)$canSearch);
                 }
                 if ($hasDeleteColumn) {
-                    $setClauses[] = sprintf('can_delete_tickets = %d', (int)$canDelete);
+                    $setClauses[] = sprintf('`can_delete_tickets` = %d', (int)$canDelete);
                 }
                 if ($hasStatsColumn) {
-                    $setClauses[] = sprintf('can_read_stats = %d', (int)$canStats);
+                    $setClauses[] = sprintf('`can_read_stats` = %d', (int)$canStats);
+                }
+                if ($hasSubticketColumn) {
+                    $setClauses[] = sprintf('`can_manage_subtickets` = %d', (int)$canSubticket);
                 }
 
+                // Execute UPDATE with properly validated and escaped values
                 $sql = sprintf(
-                    'UPDATE %s SET %s WHERE id = %d',
+                    'UPDATE %s SET %s WHERE `id` = %d',
                     API_KEY_TABLE,
                     implode(', ', $setClauses),
                     (int)$apiKeyId
@@ -294,26 +354,13 @@ class ApiEndpointsConfig extends PluginConfig {
      * @return string HTML table with API key permissions
      */
     static function renderApiKeyPermissionsTable() {
-        // Check which permission columns exist
-        $checkUpdateSql = "SHOW COLUMNS FROM " . API_KEY_TABLE . " LIKE 'can_update_tickets'";
-        $checkUpdateResult = db_query($checkUpdateSql);
-        $hasUpdateColumn = ($checkUpdateResult && db_num_rows($checkUpdateResult) > 0);
-
-        $checkReadSql = "SHOW COLUMNS FROM " . API_KEY_TABLE . " LIKE 'can_read_tickets'";
-        $checkReadResult = db_query($checkReadSql);
-        $hasReadColumn = ($checkReadResult && db_num_rows($checkReadResult) > 0);
-
-        $checkSearchSql = "SHOW COLUMNS FROM " . API_KEY_TABLE . " LIKE 'can_search_tickets'";
-        $checkSearchResult = db_query($checkSearchSql);
-        $hasSearchColumn = ($checkSearchResult && db_num_rows($checkSearchResult) > 0);
-
-        $checkDeleteSql = "SHOW COLUMNS FROM " . API_KEY_TABLE . " LIKE 'can_delete_tickets'";
-        $checkDeleteResult = db_query($checkDeleteSql);
-        $hasDeleteColumn = ($checkDeleteResult && db_num_rows($checkDeleteResult) > 0);
-
-        $checkStatsSql = "SHOW COLUMNS FROM " . API_KEY_TABLE . " LIKE 'can_read_stats'";
-        $checkStatsResult = db_query($checkStatsSql);
-        $hasStatsColumn = ($checkStatsResult && db_num_rows($checkStatsResult) > 0);
+        // Check which permission columns exist using secure helper method
+        $hasUpdateColumn = self::columnExistsStatic('can_update_tickets');
+        $hasReadColumn = self::columnExistsStatic('can_read_tickets');
+        $hasSearchColumn = self::columnExistsStatic('can_search_tickets');
+        $hasDeleteColumn = self::columnExistsStatic('can_delete_tickets');
+        $hasStatsColumn = self::columnExistsStatic('can_read_stats');
+        $hasSubticketColumn = self::columnExistsStatic('can_manage_subtickets');
 
         // Query all API keys (conditionally include columns)
         $columns = 'id, ipaddr, apikey, isactive, can_create_tickets';
@@ -322,6 +369,7 @@ class ApiEndpointsConfig extends PluginConfig {
         if ($hasSearchColumn) $columns .= ', can_search_tickets';
         if ($hasDeleteColumn) $columns .= ', can_delete_tickets';
         if ($hasStatsColumn) $columns .= ', can_read_stats';
+        if ($hasSubticketColumn) $columns .= ', can_manage_subtickets';
         $columns .= ', created, updated';
 
         $sql = "SELECT $columns FROM " . API_KEY_TABLE . " ORDER BY created DESC";
@@ -390,6 +438,7 @@ class ApiEndpointsConfig extends PluginConfig {
             $canSearch = ($hasSearchColumn && isset($row['can_search_tickets'])) ? (int)$row['can_search_tickets'] : 0;
             $canDelete = ($hasDeleteColumn && isset($row['can_delete_tickets'])) ? (int)$row['can_delete_tickets'] : 0;
             $canStats = ($hasStatsColumn && isset($row['can_read_stats'])) ? (int)$row['can_read_stats'] : 0;
+            $canSubticket = ($hasSubticketColumn && isset($row['can_manage_subtickets'])) ? (int)$row['can_manage_subtickets'] : 0;
             $created = htmlspecialchars($row['created']);
 
             $statusClass = $isActive ? 'status-active' : 'status-inactive';
@@ -488,6 +537,25 @@ class ApiEndpointsConfig extends PluginConfig {
                 $html .= '</div>';
             }
 
+            // Permission: Manage Subtickets (only if column exists AND subticket plugin available)
+            if ($hasSubticketColumn) {
+                // Check if subticket-manager plugin is available
+                $subticketPlugin = PluginManager::getInstance()->getPlugin('subticket-manager');
+                $isSubticketPluginActive = $subticketPlugin && method_exists($subticketPlugin, 'isActive') && $subticketPlugin->isActive();
+
+                if ($isSubticketPluginActive) {
+                    $html .= '<div class="permission-item">';
+                    $html .= '<input type="checkbox" name="api_key_subticket_permissions[' . $apiKeyId . ']" ' .
+                             'value="1" class="permission-checkbox" id="subticket_' . $apiKeyId . '" ' .
+                             ($canSubticket ? 'checked' : '') . ' />';
+                    $html .= '<label for="subticket_' . $apiKeyId . '">';
+                    $html .= '<strong>Manage Subtickets</strong>';
+                    $html .= '<span class="permission-endpoint">Subticket Operations</span>';
+                    $html .= '</label>';
+                    $html .= '</div>';
+                }
+            }
+
             $html .= '</div>'; // Close permissions-grid
             $html .= '</td>';
             $html .= '</tr>';
@@ -497,7 +565,7 @@ class ApiEndpointsConfig extends PluginConfig {
 
         $html .= '<div class="info-banner" style="padding: 10px; margin-top: 15px; background: #e3f2fd; border-left: 4px solid #2196F3;">
             <strong>Note:</strong> All permissions can be managed here. Changes take effect immediately after saving.
-            The "Can Update Tickets", "Can Read Tickets", "Can Search Tickets", "Can Delete Tickets", and "Can Read Stats" permissions are provided by the API Endpoints plugin.
+            The "Can Update Tickets", "Can Read Tickets", "Can Search Tickets", "Can Delete Tickets", "Can Read Stats", and "Can Manage Subtickets" permissions are provided by the API Endpoints plugin.
         </div>';
 
         $html .= '</div>'; // Close wrapper div

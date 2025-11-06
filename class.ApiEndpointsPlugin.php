@@ -97,7 +97,12 @@ class ApiEndpointsPlugin extends Plugin {
         $canUpdateTickets = '0';
 
         if ($apiKeyId) {
-            $sql = 'SELECT can_update_tickets FROM ' . API_KEY_TABLE . ' WHERE id = ' . $apiKeyId;
+            // Secure: Cast to integer to prevent SQL injection
+            $sql = sprintf(
+                'SELECT can_update_tickets FROM %s WHERE id = %d',
+                API_KEY_TABLE,
+                (int)$apiKeyId
+            );
             $result = db_query($sql);
             if ($result && ($row = db_fetch_array($result))) {
                 $canUpdateTickets = $row['can_update_tickets'] ?? '0';
@@ -449,76 +454,94 @@ class ApiEndpointsPlugin extends Plugin {
     }
 
     /**
+     * Helper: Add column to API key table if it doesn't exist
+     *
+     * @param string $columnName Column name to add
+     * @param string $columnDefinition Full column definition (e.g., "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0")
+     * @param string $afterColumn Column to add after (optional)
+     * @param array $errors Error messages array (by reference)
+     * @return bool True on success
+     */
+    private function addColumnIfNotExists($columnName, $columnDefinition, $afterColumn = null, &$errors = array()) {
+        $table = API_KEY_TABLE;
+
+        // Secure: Escape column name for LIKE query
+        $escapedColumnName = db_real_escape($columnName);
+        $sql = sprintf("SHOW COLUMNS FROM `%s` LIKE '%s'", $table, $escapedColumnName);
+        $result = db_query($sql);
+
+        if (!$result || db_num_rows($result) == 0) {
+            // Column doesn't exist, add it
+            $alterSql = sprintf("ALTER TABLE `%s` ADD COLUMN `%s` %s",
+                $table,
+                $columnName,  // Column name in backticks for safety
+                $columnDefinition
+            );
+
+            if ($afterColumn) {
+                $alterSql .= sprintf(" AFTER `%s`", $afterColumn);
+            }
+
+            if (!db_query($alterSql)) {
+                $errors[] = sprintf('Failed to add %s column to API key table', $columnName);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * Extend API Key table with new permissions
      *
      * @param array $errors Error messages array (by reference)
      * @return bool True on success
      */
     function extendApiKeyTable(&$errors) {
-        $table = API_KEY_TABLE;
         $success = true;
 
-        // Add can_update_tickets column if not exists
-        $sql = "SHOW COLUMNS FROM `$table` LIKE 'can_update_tickets'";
-        $result = db_query($sql);
+        // Define columns to add with their definitions and position
+        $columns = array(
+            array(
+                'name' => 'can_update_tickets',
+                'definition' => 'TINYINT(1) UNSIGNED NOT NULL DEFAULT 0',
+                'after' => 'can_create_tickets'
+            ),
+            array(
+                'name' => 'can_read_tickets',
+                'definition' => 'TINYINT(1) UNSIGNED NOT NULL DEFAULT 0',
+                'after' => 'can_update_tickets'
+            ),
+            array(
+                'name' => 'can_search_tickets',
+                'definition' => 'TINYINT(1) UNSIGNED NOT NULL DEFAULT 0',
+                'after' => 'can_read_tickets'
+            ),
+            array(
+                'name' => 'can_delete_tickets',
+                'definition' => 'TINYINT(1) UNSIGNED NOT NULL DEFAULT 0',
+                'after' => 'can_search_tickets'
+            ),
+            array(
+                'name' => 'can_read_stats',
+                'definition' => 'TINYINT(1) UNSIGNED NOT NULL DEFAULT 0',
+                'after' => 'can_delete_tickets'
+            ),
+            array(
+                'name' => 'can_manage_subtickets',
+                'definition' => 'TINYINT(1) UNSIGNED NOT NULL DEFAULT 0',
+                'after' => 'can_read_stats'
+            )
+        );
 
-        if (!$result || db_num_rows($result) == 0) {
-            $sql = "ALTER TABLE `$table` ADD COLUMN `can_update_tickets` TINYINT(1) UNSIGNED NOT NULL DEFAULT 0 AFTER `can_create_tickets`";
-
-            if (!db_query($sql)) {
-                $errors[] = 'Failed to add can_update_tickets column to API key table';
-                $success = false;
-            }
-        }
-
-        // Add can_read_tickets column if not exists
-        $sql = "SHOW COLUMNS FROM `$table` LIKE 'can_read_tickets'";
-        $result = db_query($sql);
-
-        if (!$result || db_num_rows($result) == 0) {
-            $sql = "ALTER TABLE `$table` ADD COLUMN `can_read_tickets` TINYINT(1) UNSIGNED NOT NULL DEFAULT 0 AFTER `can_update_tickets`";
-
-            if (!db_query($sql)) {
-                $errors[] = 'Failed to add can_read_tickets column to API key table';
-                $success = false;
-            }
-        }
-
-        // Add can_search_tickets column if not exists
-        $sql = "SHOW COLUMNS FROM `$table` LIKE 'can_search_tickets'";
-        $result = db_query($sql);
-
-        if (!$result || db_num_rows($result) == 0) {
-            $sql = "ALTER TABLE `$table` ADD COLUMN `can_search_tickets` TINYINT(1) UNSIGNED NOT NULL DEFAULT 0 AFTER `can_read_tickets`";
-
-            if (!db_query($sql)) {
-                $errors[] = 'Failed to add can_search_tickets column to API key table';
-                $success = false;
-            }
-        }
-
-        // Add can_delete_tickets column if not exists
-        $sql = "SHOW COLUMNS FROM `$table` LIKE 'can_delete_tickets'";
-        $result = db_query($sql);
-
-        if (!$result || db_num_rows($result) == 0) {
-            $sql = "ALTER TABLE `$table` ADD COLUMN `can_delete_tickets` TINYINT(1) UNSIGNED NOT NULL DEFAULT 0 AFTER `can_search_tickets`";
-
-            if (!db_query($sql)) {
-                $errors[] = 'Failed to add can_delete_tickets column to API key table';
-                $success = false;
-            }
-        }
-
-        // Add can_read_stats column if not exists
-        $sql = "SHOW COLUMNS FROM `$table` LIKE 'can_read_stats'";
-        $result = db_query($sql);
-
-        if (!$result || db_num_rows($result) == 0) {
-            $sql = "ALTER TABLE `$table` ADD COLUMN `can_read_stats` TINYINT(1) UNSIGNED NOT NULL DEFAULT 0 AFTER `can_delete_tickets`";
-
-            if (!db_query($sql)) {
-                $errors[] = 'Failed to add can_read_stats column to API key table';
+        // Add each column using helper method
+        foreach ($columns as $column) {
+            if (!$this->addColumnIfNotExists(
+                $column['name'],
+                $column['definition'],
+                $column['after'],
+                $errors
+            )) {
                 $success = false;
             }
         }
@@ -527,65 +550,51 @@ class ApiEndpointsPlugin extends Plugin {
     }
 
     /**
+     * Helper: Remove column from API key table if it exists
+     *
+     * @param string $columnName Column name to remove
+     * @return bool True on success
+     */
+    private function removeColumnIfExists($columnName) {
+        $table = API_KEY_TABLE;
+
+        // Secure: Escape column name for LIKE query
+        $escapedColumnName = db_real_escape($columnName);
+        $sql = sprintf("SHOW COLUMNS FROM `%s` LIKE '%s'", $table, $escapedColumnName);
+        $result = db_query($sql);
+
+        if ($result && db_num_rows($result) > 0) {
+            // Column exists, remove it
+            $sql = sprintf("ALTER TABLE `%s` DROP COLUMN `%s`", $table, $columnName);
+            if (!db_query($sql)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * Remove extended columns from API Key table
      *
      * @return bool True on success
      */
     function removeApiKeyTableExtensions() {
-        $table = API_KEY_TABLE;
         $success = true;
 
-        // Remove can_read_stats column if exists
-        $sql = "SHOW COLUMNS FROM `$table` LIKE 'can_read_stats'";
-        $result = db_query($sql);
+        // List of columns to remove (in reverse order of adding)
+        $columnsToRemove = array(
+            'can_manage_subtickets',
+            'can_read_stats',
+            'can_delete_tickets',
+            'can_search_tickets',
+            'can_read_tickets',
+            'can_update_tickets'
+        );
 
-        if ($result && db_num_rows($result) > 0) {
-            $sql = "ALTER TABLE `$table` DROP COLUMN `can_read_stats`";
-            if (!db_query($sql)) {
-                $success = false;
-            }
-        }
-
-        // Remove can_delete_tickets column if exists
-        $sql = "SHOW COLUMNS FROM `$table` LIKE 'can_delete_tickets'";
-        $result = db_query($sql);
-
-        if ($result && db_num_rows($result) > 0) {
-            $sql = "ALTER TABLE `$table` DROP COLUMN `can_delete_tickets`";
-            if (!db_query($sql)) {
-                $success = false;
-            }
-        }
-
-        // Remove can_search_tickets column if exists
-        $sql = "SHOW COLUMNS FROM `$table` LIKE 'can_search_tickets'";
-        $result = db_query($sql);
-
-        if ($result && db_num_rows($result) > 0) {
-            $sql = "ALTER TABLE `$table` DROP COLUMN `can_search_tickets`";
-            if (!db_query($sql)) {
-                $success = false;
-            }
-        }
-
-        // Remove can_read_tickets column if exists
-        $sql = "SHOW COLUMNS FROM `$table` LIKE 'can_read_tickets'";
-        $result = db_query($sql);
-
-        if ($result && db_num_rows($result) > 0) {
-            $sql = "ALTER TABLE `$table` DROP COLUMN `can_read_tickets`";
-            if (!db_query($sql)) {
-                $success = false;
-            }
-        }
-
-        // Remove can_update_tickets column if exists
-        $sql = "SHOW COLUMNS FROM `$table` LIKE 'can_update_tickets'";
-        $result = db_query($sql);
-
-        if ($result && db_num_rows($result) > 0) {
-            $sql = "ALTER TABLE `$table` DROP COLUMN `can_update_tickets`";
-            if (!db_query($sql)) {
+        // Remove each column using helper method
+        foreach ($columnsToRemove as $columnName) {
+            if (!$this->removeColumnIfExists($columnName)) {
                 $success = false;
             }
         }
