@@ -1,2 +1,5 @@
 /vendor/
 .phpunit.result.cache
+
+# Claude Code project documentation (machine-specific)
+CLAUDE.md
