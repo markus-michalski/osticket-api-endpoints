@@ -1206,4 +1206,63 @@ class ExtendedTicketApiController extends TicketApiController {
 
         return $results;
     }
+
+    /**
+     * Get all ticket statuses from database
+     *
+     * Returns an array of all ticket statuses with their IDs, names, and states.
+     * This allows API clients to dynamically lookup status IDs by name instead
+     * of hardcoding status mappings.
+     *
+     * Response structure:
+     * [
+     *   {"id": 1, "name": "Open", "state": "open"},
+     *   {"id": 2, "name": "Resolved", "state": "closed"},
+     *   {"id": 3, "name": "Closed", "state": "closed"},
+     *   ...
+     * ]
+     *
+     * Permission: Requires can_read_tickets OR canCreateTickets (backward compat)
+     *
+     * @return array Array of status objects sorted by sort order
+     * @throws Exception with code 401 if API key not authorized
+     * @throws Exception with code 500 if database query fails
+     */
+    public function getTicketStatuses() {
+        try {
+            // Check permission (same as stats endpoint for consistency)
+            if (!($key = $this->requireApiKey())) {
+                throw new Exception('API key not authorized', 401);
+            }
+            $this->requireStatsPermission($key);
+
+            // Query database for all ticket statuses
+            // Uses osTicket's TicketStatus ORM
+            $statuses = TicketStatus::objects()
+                ->order_by('sort')  // Order by sort column for consistent ordering
+                ->all();
+
+            // Build response array
+            $results = [];
+            foreach ($statuses as $status) {
+                $results[] = [
+                    'id' => $status->getId(),
+                    'name' => $status->getName(),
+                    'state' => $status->getState()
+                ];
+            }
+
+            return $results;
+
+        } catch (Exception $e) {
+            // Re-throw known exceptions (401) without wrapping
+            if ($e->getCode() == 401) {
+                throw $e;
+            }
+
+            // Log unexpected errors for debugging
+            error_log('[API-ENDPOINTS-ERROR] Status lookup failed: ' . $e->getMessage());
+            throw new Exception('Failed to retrieve ticket statuses: ' . $e->getMessage(), 500);
+        }
+    }
 }
