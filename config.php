@@ -76,8 +76,8 @@ class ApiEndpointsConfig extends PluginConfig {
                             <li style="margin: 5px 0;">✓ <strong>Subticket Operations</strong> - Manage parent-child ticket relationships (get parent, list children, create/unlink)<br>
                                <span style="color: #666; font-size: 11px;">Controlled by: <code>can_manage_subtickets</code> permission (requires Subticket Manager Plugin)</span></li>
                         </ul>
-                        <p style="margin: 10px 0 0 0; font-size: 12px; color: #666;">
-                            <strong>Note:</strong> Access to these endpoints is controlled individually per API Key using the permissions below.
+                        <p style="margin: 15px 0 0 0; padding: 10px; background: #fff3e0; border-left: 3px solid #ff9800; font-size: 13px;">
+                            <strong>⚠ Important:</strong> Access to these endpoints is controlled individually per API Key using the permissions below.
                         </p>
                     </div>'
                 )
@@ -538,11 +538,6 @@ class ApiEndpointsConfig extends PluginConfig {
         }
 
         $html .= '</tbody></table>';
-
-        $html .= '<div class="info-banner" style="padding: 10px; margin-top: 15px; background: #e3f2fd; border-left: 4px solid #2196F3;">
-            <strong>Note:</strong> All permissions can be managed here. Changes take effect immediately after saving.
-            The "Can Update Tickets", "Can Read Tickets", "Can Search Tickets", "Can Delete Tickets", "Can Read Stats", and "Can Manage Subtickets" permissions are provided by the API Endpoints plugin.
-        </div>';
 
         $html .= '</div>'; // Close wrapper div
 
