@@ -31,17 +31,10 @@ if (file_exists($plugin_path.'controllers/ExtendedTicketApiController.php')) {
 // URL: /api/tickets-get.php/680284.json -> path_info = /680284.json
 $path_info = Osticket::get_path_info();
 
-// DEBUG: Write to file (bypasses error_log config issues)
-$debug_log = '/tmp/api-tickets-get-debug.log';
-file_put_contents($debug_log, date('Y-m-d H:i:s') . " PATH_INFO: " . var_export($path_info, true) . "\n", FILE_APPEND);
-file_put_contents($debug_log, date('Y-m-d H:i:s') . " REQUEST_URI: " . var_export($_SERVER['REQUEST_URI'], true) . "\n", FILE_APPEND);
-file_put_contents($debug_log, date('Y-m-d H:i:s') . " SCRIPT_NAME: " . var_export($_SERVER['SCRIPT_NAME'], true) . "\n", FILE_APPEND);
-
 // Extract ticket number and format
 // Pattern: /{ticket_number}.{format}
 if (!preg_match('#^/(?P<number>[^/.]+)\.(?P<format>json|xml)$#', $path_info, $matches)) {
-    file_put_contents($debug_log, date('Y-m-d H:i:s') . " PATTERN FAILED - path_info: " . var_export($path_info, true) . "\n", FILE_APPEND);
-    Http::response(400, 'URL not supported', 'text/plain');
+    Http::response(400, 'Invalid URL format. Expected: /api/tickets-get.php/{ticket_number}.json', 'text/plain');
     exit;
 }
 
