@@ -20,7 +20,7 @@ BASE_URL="https://stage.tickets.markus-michalski.net/api"  # Direct API access
 PARENT_TICKET="456846"   # Existing ticket to use as parent
 CHILD_TICKET="237948"    # Existing ticket to use as child
 TICKET_TO_UPDATE="237948" # Existing ticket for update tests
-TICKET_TO_DELETE="375547" # Existing ticket for delete tests (WARNING: will be deleted!)
+TICKET_TO_DELETE="646707" # Existing ticket for delete tests (WARNING: will be deleted!)
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -232,6 +232,12 @@ run_curl "curl -X GET \"${BASE_URL}/tickets-subtickets-list.php/${CHILD_TICKET}.
 # =============================================================================
 
 section "9. SUBTICKET ENDPOINTS - tickets-subtickets-create.php"
+
+# Cleanup: Ensure no existing link before testing CREATE
+echo "[SETUP] Removing any existing link between parent and child..."
+curl -X DELETE "${BASE_URL}/tickets-subtickets-unlink.php/${CHILD_TICKET}.json" \
+  -H "X-API-Key: ${API_KEY}" \
+  -s > /dev/null 2>&1
 
 test_header "9.1 Create Subticket Link"
 run_curl "curl -X POST \"${BASE_URL}/tickets-subtickets-create.php/${PARENT_TICKET}.json\" \
