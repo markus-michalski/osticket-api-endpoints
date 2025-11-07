@@ -31,10 +31,15 @@ if (file_exists($plugin_path.'controllers/ExtendedTicketApiController.php')) {
 // URL: /api/tickets-get.php/680284.json -> path_info = /680284.json
 $path_info = Osticket::get_path_info();
 
+// DEBUG: Log what we actually got
+error_log('[tickets-get.php] PATH_INFO received: ' . $path_info);
+error_log('[tickets-get.php] REQUEST_URI: ' . $_SERVER['REQUEST_URI']);
+
 // Extract ticket number and format
 // Pattern: /{ticket_number}.{format}
 if (!preg_match('#^/(?P<number>[^/.]+)\.(?P<format>json|xml)$#', $path_info, $matches)) {
-    Http::response(400, 'Invalid URL format. Expected: /api/tickets-get.php/{ticket_number}.json', 'text/plain');
+    error_log('[tickets-get.php] Pattern did NOT match path_info: ' . $path_info);
+    Http::response(400, 'Invalid URL format. Expected: /api/tickets-get.php/{ticket_number}.json (got: ' . $path_info . ')', 'text/plain');
     exit;
 }
 
