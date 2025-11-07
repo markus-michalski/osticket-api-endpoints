@@ -874,6 +874,12 @@ class ApiEndpointsPlugin extends Plugin {
      * for testing purposes. Files and database columns remain intact.
      */
     function disable() {
+        // CRITICAL DEBUG: Test if disable is called instead of pre_uninstall
+        file_put_contents('/tmp/api-endpoints-uninstall-test.log',
+            date('Y-m-d H:i:s') . ' - disable() WAS CALLED!' . PHP_EOL,
+            FILE_APPEND);
+        error_log('[API Endpoints] disable() called');
+
         // Do nothing - plugin can be re-enabled without losing configuration
         return true;
     }
@@ -893,6 +899,10 @@ class ApiEndpointsPlugin extends Plugin {
      * @return bool True to proceed with uninstall, false to abort
      */
     function pre_uninstall(&$errors) {
+        // CRITICAL DEBUG: Test if this method is even called
+        file_put_contents('/tmp/api-endpoints-uninstall-test.log',
+            date('Y-m-d H:i:s') . ' - pre_uninstall() WAS CALLED!' . PHP_EOL,
+            FILE_APPEND);
         error_log('[API Endpoints] Starting pre_uninstall cleanup...');
 
         // Remove deployed API files and .htaccess rules
