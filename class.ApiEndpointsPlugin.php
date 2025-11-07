@@ -671,6 +671,18 @@ class ApiEndpointsPlugin extends Plugin {
             $success = false;
         }
 
+        // Deploy tickets-subtickets-parent.php
+        $subticket_parent_source = __DIR__ . '/api/tickets-subtickets-parent.php';
+        $subticket_parent_target = INCLUDE_DIR . '../api/tickets-subtickets-parent.php';
+
+        if (!file_exists($subticket_parent_source)) {
+            $errors[] = 'API file not found: ' . $subticket_parent_source;
+            $success = false;
+        } elseif (!copy($subticket_parent_source, $subticket_parent_target)) {
+            $errors[] = 'Failed to deploy tickets-subtickets-parent.php to /api/';
+            $success = false;
+        }
+
         // Add .htaccess rule if not present
         $this->addHtaccessRule($errors);
 
@@ -784,6 +796,23 @@ class ApiEndpointsPlugin extends Plugin {
             $updated = true;
         }
 
+        // Check and add tickets-subtickets-parent.php rule if not present
+        if (strpos($content, 'tickets-subtickets-parent\.php/') === false) {
+            $subticket_parent_rule = "\n# Subticket Parent API endpoint (pass through without rewriting)\nRewriteRule ^tickets-subtickets-parent\.php/ - [L]\n";
+
+            // Find the tickets-stats rule (should be there now)
+            $stats_pos = strpos($content, 'RewriteRule ^tickets-stats\.php');
+            if ($stats_pos !== false) {
+                // Insert after tickets-stats rule
+                $line_end = strpos($content, "\n", $stats_pos);
+                $content = substr_replace($content, $subticket_parent_rule, $line_end + 1, 0);
+            } else {
+                // Fallback: add at end before </IfModule>
+                $content = str_replace('</IfModule>', $subticket_parent_rule . "\n</IfModule>", $content);
+            }
+            $updated = true;
+        }
+
         // Write back to file only if changes were made
         if ($updated) {
             if (!file_put_contents($htaccess_file, $content)) {
@@ -829,6 +858,10 @@ class ApiEndpointsPlugin extends Plugin {
         $pattern = '/\n# Ticket Stats API endpoint.*?\nRewriteRule \^tickets-stats\\\.php - \[L\]\n/s';
         $content = preg_replace($pattern, "\n", $content);
 
+        // Remove tickets-subtickets-parent.php rule block (including comment)
+        $pattern = '/\n# Subticket Parent API endpoint.*?\nRewriteRule \^tickets-subtickets-parent\\\.php\/ - \[L\]\n/s';
+        $content = preg_replace($pattern, "\n", $content);
+
         file_put_contents($htaccess_file, $content);
 
         return true;
@@ -871,6 +904,12 @@ class ApiEndpointsPlugin extends Plugin {
         $stats_target = INCLUDE_DIR . '../api/tickets-stats.php';
         if (file_exists($stats_target)) {
             @unlink($stats_target);
+        }
+
+        // Remove tickets-subtickets-parent.php
+        $subticket_parent_target = INCLUDE_DIR . '../api/tickets-subtickets-parent.php';
+        if (file_exists($subticket_parent_target)) {
+            @unlink($subticket_parent_target);
         }
 
         return true;
