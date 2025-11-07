@@ -2,7 +2,7 @@
 
 return array(
     'id' =>             'com.osticket:api-endpoints',
-    'version' =>        '1.2.0',
+    'version' =>        '1.2.1',
     'name' =>           'API Endpoints',
     'author' =>         'Markus Michalski',
     'description' =>    'Extends osTicket API with additional endpoints and parameters: ticket creation with Markdown support, department selection, and subticket functionality.',
