@@ -421,6 +421,11 @@ class ApiEndpointsPlugin extends Plugin {
      * Called when plugin is enabled in admin panel
      */
     function enable() {
+        // TEST: Can we write to /tmp at all?
+        file_put_contents('/tmp/api-endpoints-enable-test.log',
+            date('Y-m-d H:i:s') . ' - enable() WAS CALLED!' . PHP_EOL,
+            FILE_APPEND);
+
         $errors = array();
 
         // Auto-create instance for singleton plugin
@@ -905,22 +910,44 @@ class ApiEndpointsPlugin extends Plugin {
             FILE_APPEND);
         error_log('[API Endpoints] Starting pre_uninstall cleanup...');
 
-        // Remove deployed API files and .htaccess rules
-        if (!$this->removeApiFiles()) {
-            error_log('[API Endpoints] WARNING: File removal had errors (check permissions)');
-            // Don't abort uninstall, just warn
-        }
-
-        // Remove API Key table extensions (database columns)
-        // This will delete all permission data!
-        if (!$this->removeApiKeyTableExtensions()) {
-            error_log('[API Endpoints] WARNING: Database cleanup had errors');
-            // Don't abort uninstall, just warn
-        }
-
-        error_log('[API Endpoints] Pre-uninstall cleanup complete');
+        $this->performCleanup();
 
         // Return true to allow parent::uninstall() to proceed with deletion
         return true;
+    }
+
+    /**
+     * Override uninstall to add cleanup (alternative approach)
+     *
+     * Try both pre_uninstall() and uninstall() to see which one works
+     */
+    function uninstall(&$errors) {
+        // CRITICAL DEBUG: Test if this method is called
+        file_put_contents('/tmp/api-endpoints-uninstall-test.log',
+            date('Y-m-d H:i:s') . ' - uninstall() WAS CALLED!' . PHP_EOL,
+            FILE_APPEND);
+        error_log('[API Endpoints] Starting uninstall cleanup...');
+
+        $this->performCleanup();
+
+        // Call parent to finish uninstall
+        return parent::uninstall($errors);
+    }
+
+    /**
+     * Perform cleanup operations (called from both pre_uninstall and uninstall)
+     */
+    private function performCleanup() {
+        // Remove deployed API files and .htaccess rules
+        if (!$this->removeApiFiles()) {
+            error_log('[API Endpoints] WARNING: File removal had errors (check permissions)');
+        }
+
+        // Remove API Key table extensions (database columns)
+        if (!$this->removeApiKeyTableExtensions()) {
+            error_log('[API Endpoints] WARNING: Database cleanup had errors');
+        }
+
+        error_log('[API Endpoints] Cleanup complete');
     }
 }
