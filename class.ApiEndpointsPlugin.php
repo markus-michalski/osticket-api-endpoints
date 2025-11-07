@@ -879,25 +879,38 @@ class ApiEndpointsPlugin extends Plugin {
     }
 
     /**
-     * Called when plugin is uninstalled (deleted)
+     * Called BEFORE plugin is uninstalled (deleted)
+     *
+     * This is the correct hook for cleanup operations.
+     * After this returns true, parent::uninstall() deletes the plugin.
      *
      * This performs complete cleanup:
      * - Removes all deployed API files from /api/
      * - Removes .htaccess rewrite rules
      * - Removes database columns from api_key table
+     *
+     * @param array $errors Error messages array (by reference)
+     * @return bool True to proceed with uninstall, false to abort
      */
-    function uninstall(&$errors) {
-        error_log('[API Endpoints] Starting uninstall cleanup...');
+    function pre_uninstall(&$errors) {
+        error_log('[API Endpoints] Starting pre_uninstall cleanup...');
 
         // Remove deployed API files and .htaccess rules
-        $this->removeApiFiles();
+        if (!$this->removeApiFiles()) {
+            error_log('[API Endpoints] WARNING: File removal had errors (check permissions)');
+            // Don't abort uninstall, just warn
+        }
 
         // Remove API Key table extensions (database columns)
         // This will delete all permission data!
-        $this->removeApiKeyTableExtensions();
+        if (!$this->removeApiKeyTableExtensions()) {
+            error_log('[API Endpoints] WARNING: Database cleanup had errors');
+            // Don't abort uninstall, just warn
+        }
 
-        error_log('[API Endpoints] Uninstall cleanup complete');
+        error_log('[API Endpoints] Pre-uninstall cleanup complete');
 
-        return parent::uninstall($errors);
+        // Return true to allow parent::uninstall() to proceed with deletion
+        return true;
     }
 }
