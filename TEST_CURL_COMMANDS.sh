@@ -19,8 +19,8 @@ BASE_URL="https://stage.tickets.markus-michalski.net/api"  # Direct API access
 # Test data - REPLACE WITH REAL TICKET NUMBERS FROM YOUR SYSTEM
 PARENT_TICKET="456846"   # Existing ticket to use as parent
 CHILD_TICKET="237948"    # Existing ticket to use as child
-TICKET_TO_UPDATE="135995" # Existing ticket for update tests
-TICKET_TO_DELETE="199736" # Existing ticket for delete tests (WARNING: will be deleted!)
+TICKET_TO_UPDATE="237948" # Existing ticket for update tests
+TICKET_TO_DELETE="711314" # Existing ticket for delete tests (WARNING: will be deleted!)
 
 # Colors for output
 GREEN='\033[0;32m'

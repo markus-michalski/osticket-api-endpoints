@@ -208,7 +208,14 @@ class SubticketApiController extends ExtendedTicketApiController {
 
         // 5. Get parent via cached plugin instance
         $plugin = $this->getSubticketPlugin();
-        $parentTicket = $plugin->getParent($childTicket);
+
+        try {
+            $parentTicket = $plugin->getParent($childTicket);
+        } catch (Exception $e) {
+            // Plugin may throw exception if no parent exists
+            // Treat as "no parent" instead of error
+            $parentTicket = null;
+        }
 
         // 6. Return result
         if (!$parentTicket) {
