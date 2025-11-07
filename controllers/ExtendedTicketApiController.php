@@ -183,8 +183,8 @@ class ExtendedTicketApiController extends TicketApiController {
         if (isset($data['topicId'])) {
             $topicId = $this->validateTopicId($data['topicId']);
             if ($ticket->getTopicId() != $topicId) {
-                // No setTopicId() method exists, use direct property access
-                $ticket->topic_id = $topicId;
+                // Use setTopicId() method (available in osTicket Ticket class)
+                $ticket->setTopicId($topicId);
                 $ticket->save();
                 $updated = true;
             }
