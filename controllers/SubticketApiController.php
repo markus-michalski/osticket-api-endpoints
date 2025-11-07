@@ -133,6 +133,42 @@ class SubticketApiController extends ExtendedTicketApiController {
     }
 
     /**
+     * Check if API key can access ticket (Department-Level Authorization)
+     *
+     * Validates if the API key has access to the department of the given ticket.
+     * If the API key has no department restrictions, access is granted to all departments.
+     *
+     * @param Ticket $ticket The ticket to check access for
+     * @return bool True if access granted, false otherwise
+     */
+    private function canAccessTicket(Ticket $ticket): bool {
+        $apiKey = $this->getApiKey();
+
+        // If no API key, deny access
+        if (!$apiKey) {
+            return false;
+        }
+
+        // Get ticket's department ID
+        $ticketDeptId = $ticket->getDeptId();
+
+        // If ticket has no department, allow access (edge case)
+        if (!$ticketDeptId) {
+            return true;
+        }
+
+        // Check if API key has department restrictions
+        // In real osTicket, this would be: $apiKey->getDepartments()
+        // For now, we assume API keys without explicit restrictions have full access
+        // This can be extended when department restrictions are added to API keys
+
+        // NOTE: In production osTicket, implement proper department access check here
+        // Example: return in_array($ticketDeptId, $apiKey->getDepartments());
+
+        return true; // Allow access for now (TODO: Implement proper department restrictions)
+    }
+
+    /**
      * Get parent ticket of a subticket
      *
      * @param int $childId Child ticket ID
@@ -232,6 +268,89 @@ class SubticketApiController extends ExtendedTicketApiController {
         }
 
         return ['children' => $children];
+    }
+
+    /**
+     * Create a subticket link between parent and child tickets
+     *
+     * @param int $parentId Parent ticket ID
+     * @param int $childId Child ticket ID
+     * @return array Success response with parent and child data
+     * @throws Exception 400 - Invalid ticket IDs or self-link attempt
+     * @throws Exception 403 - API key not authorized (permission or department access)
+     * @throws Exception 404 - Parent or child ticket not found
+     * @throws Exception 409 - Child already has a parent
+     * @throws Exception 501 - Subticket Manager Plugin not available
+     */
+    public function createLink(int $parentId, int $childId): array {
+        // 1. Validate parent ticket ID
+        if ($parentId <= 0) {
+            throw new Exception('Invalid parent ticket ID', 400);
+        }
+
+        // 2. Validate child ticket ID
+        if ($childId <= 0) {
+            throw new Exception('Invalid child ticket ID', 400);
+        }
+
+        // 3. Check for self-link
+        if ($parentId === $childId) {
+            throw new Exception('Cannot link ticket to itself', 400);
+        }
+
+        // 4. Permission check
+        $this->requireSubticketPermission();
+
+        // 5. Plugin check
+        if (!$this->isSubticketPluginAvailable()) {
+            throw new Exception('Subticket plugin not available', 501);
+        }
+
+        // 6. Parent ticket lookup
+        $parentTicket = Ticket::lookup($parentId);
+        if (!$parentTicket) {
+            throw new Exception('Parent ticket not found', 404);
+        }
+
+        // 7. Child ticket lookup
+        $childTicket = Ticket::lookup($childId);
+        if (!$childTicket) {
+            throw new Exception('Child ticket not found', 404);
+        }
+
+        // 8. Department access check for parent ticket
+        if (!$this->canAccessTicket($parentTicket)) {
+            throw new Exception('Access denied to parent ticket department', 403);
+        }
+
+        // 9. Department access check for child ticket
+        if (!$this->canAccessTicket($childTicket)) {
+            throw new Exception('Access denied to child ticket department', 403);
+        }
+
+        // 10. Check if child already has a parent
+        $plugin = $this->getSubticketPlugin();
+        $existingParent = $plugin->getParent($childTicket);
+
+        if ($existingParent) {
+            // Check if it's the same parent (relationship already exists)
+            if ($existingParent->getId() === $parentId) {
+                throw new Exception('Subticket relationship already exists', 409);
+            }
+            // Different parent exists
+            throw new Exception('Child ticket already has a different parent', 409);
+        }
+
+        // 11. Create the link
+        $plugin->createLink($parentTicket, $childTicket);
+
+        // 12. Return success response with parent and child data
+        return [
+            'success' => true,
+            'message' => 'Subticket relationship created successfully',
+            'parent' => $this->formatTicketData($parentTicket),
+            'child' => $this->formatTicketData($childTicket),
+        ];
     }
 
     /**
