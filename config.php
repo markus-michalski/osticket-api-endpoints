@@ -384,64 +384,10 @@ class ApiEndpointsConfig extends PluginConfig {
             </div>';
         }
 
-        // DEBUG: Check subticket plugin status
-        $debugInfo = '';
-        if ($hasSubticketColumn) {
-            try {
-                // Try different methods to get plugin instance
-                $subticketPluginCheck = null;
-                $methodUsed = 'none';
-
-                // Method 1: Try different approaches to get plugin
-
-                // Approach A: Try using Plugin class directly
-                if (class_exists('Plugin')) {
-                    try {
-                        $plugin_path = 'subticket-manager';
-                        $plugin_instance = Plugin::getInstance($plugin_path);
-                        if ($plugin_instance) {
-                            $subticketPluginCheck = $plugin_instance;
-                            $methodUsed = 'Plugin::getInstance(path)';
-                        }
-                    } catch (Exception $e) {
-                        $methodUsed = 'Plugin::getInstance failed: ' . $e->getMessage();
-                    }
-                }
-
-                // Approach B: If that didn't work, try PluginManager
-                if (!$subticketPluginCheck && class_exists('PluginManager')) {
-                    try {
-                        // Try with plugin directory path
-                        $plugin_dir = INCLUDE_DIR . 'plugins/subticket-manager';
-                        $pm = PluginManager::getInstance($plugin_dir);
-                        if ($pm) {
-                            $subticketPluginCheck = $pm;
-                            $methodUsed = 'PluginManager (full path)';
-                        }
-                    } catch (Exception $e2) {
-                        $methodUsed = 'All methods failed: ' . $e2->getMessage();
-                    }
-                }
-
-                $isPluginActive = $subticketPluginCheck && method_exists($subticketPluginCheck, 'isActive') && $subticketPluginCheck->isActive();
-
-                $debugInfo = '<div style="padding: 10px; background: #fff3cd; border-left: 4px solid #ffc107; margin-bottom: 10px;">';
-                $debugInfo .= '<strong>DEBUG Info:</strong><br>';
-                $debugInfo .= 'hasSubticketColumn: <strong>' . ($hasSubticketColumn ? 'TRUE' : 'FALSE') . '</strong><br>';
-                $debugInfo .= 'Method used: <strong>' . htmlspecialchars($methodUsed) . '</strong><br>';
-                $debugInfo .= 'Plugin found: <strong>' . ($subticketPluginCheck ? 'YES' : 'NO') . '</strong><br>';
-                $debugInfo .= 'Plugin Active: <strong>' . ($isPluginActive ? 'TRUE' : 'FALSE') . '</strong>';
-                $debugInfo .= '</div>';
-            } catch (Exception $e) {
-                $debugInfo = '<div style="padding: 10px; background: #ffebee; border-left: 4px solid #f44336; margin-bottom: 10px;">';
-                $debugInfo .= '<strong>DEBUG Error:</strong><br>';
-                $debugInfo .= htmlspecialchars($e->getMessage());
-                $debugInfo .= '</div>';
-            }
-        }
+        // No DEBUG banner - plugin detection is too risky in config context
 
         // Build HTML table with accordion-style permissions
-        $html = $debugInfo . '<div style="width: 100%; overflow-x: auto;">
+        $html = '<div style="width: 100%; overflow-x: auto;">
         <style>
             .api-permissions-table { width: 100% !important; border-collapse: collapse; margin-top: 10px; table-layout: fixed; min-width: 100%; }
             .api-permissions-table th { background: #f5f5f5; padding: 10px; text-align: left; border-bottom: 2px solid #ddd; font-weight: 600; }
@@ -597,57 +543,14 @@ class ApiEndpointsConfig extends PluginConfig {
             }
 
             // Permission: Manage Subtickets (only if column exists)
+            // Note: Always show checkbox, plugin check happens at API request time
             if ($hasSubticketColumn) {
-                // Try to get plugin instance safely with try-catch
-                $subticketPlugin = null;
-                $isSubticketPluginActive = false;
-
-                try {
-                    // Try using Plugin class directly
-                    if (class_exists('Plugin')) {
-                        try {
-                            $plugin_path = 'subticket-manager';
-                            $subticketPlugin = Plugin::getInstance($plugin_path);
-                            if ($subticketPlugin) {
-                                $isSubticketPluginActive = $subticketPlugin && method_exists($subticketPlugin, 'isActive') && $subticketPlugin->isActive();
-                                error_log('DEBUG ApiEndpointsPlugin: Used Plugin::getInstance successfully');
-                            }
-                        } catch (Exception $e) {
-                            error_log('DEBUG ApiEndpointsPlugin: Plugin::getInstance failed: ' . $e->getMessage());
-                        }
-                    }
-
-                    // Fallback: Try PluginManager with full path
-                    if (!$subticketPlugin && class_exists('PluginManager')) {
-                        try {
-                            $plugin_dir = INCLUDE_DIR . 'plugins/subticket-manager';
-                            $subticketPlugin = PluginManager::getInstance($plugin_dir);
-                            if ($subticketPlugin) {
-                                $isSubticketPluginActive = $subticketPlugin && method_exists($subticketPlugin, 'isActive') && $subticketPlugin->isActive();
-                                error_log('DEBUG ApiEndpointsPlugin: Used PluginManager::getInstance with full path');
-                            }
-                        } catch (Exception $e2) {
-                            error_log('DEBUG ApiEndpointsPlugin: PluginManager with path failed: ' . $e2->getMessage());
-                        }
-                    }
-                } catch (Exception $e) {
-                    error_log('DEBUG ApiEndpointsPlugin: Error checking plugin: ' . $e->getMessage());
-                }
-
-                // DEBUG: Log plugin check results
-                error_log('DEBUG ApiEndpointsPlugin: subticketPlugin found = ' . ($subticketPlugin ? 'YES' : 'NO'));
-                error_log('DEBUG ApiEndpointsPlugin: isSubticketPluginActive = ' . ($isSubticketPluginActive ? 'TRUE' : 'FALSE'));
-
-                $html .= '<div class="permission-item' . (!$isSubticketPluginActive ? ' disabled' : '') . '" style="' . (!$isSubticketPluginActive ? 'opacity: 0.6;' : '') . '">';
+                $html .= '<div class="permission-item">';
                 $html .= '<input type="checkbox" name="api_key_subticket_permissions[' . $apiKeyId . ']" ' .
                          'value="1" class="permission-checkbox" id="subticket_' . $apiKeyId . '" ' .
-                         ($canSubticket ? 'checked' : '') .
-                         (!$isSubticketPluginActive ? ' disabled' : '') . ' />';
+                         ($canSubticket ? 'checked' : '') . ' />';
                 $html .= '<label for="subticket_' . $apiKeyId . '">';
                 $html .= '<strong>Manage Subtickets</strong>';
-                if (!$isSubticketPluginActive) {
-                    $html .= ' <span style="color: #f44336; font-size: 11px;">(Requires Subticket Manager Plugin)</span>';
-                }
                 $html .= '<span class="permission-endpoint">Subticket Operations</span>';
                 $html .= '</label>';
                 $html .= '</div>';
