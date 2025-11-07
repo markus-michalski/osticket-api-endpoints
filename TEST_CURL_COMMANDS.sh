@@ -96,7 +96,7 @@ run_curl "curl -X GET \"${BASE_URL}/tickets-search.php?query=bug&limit=10&offset
   -s | jq ."
 
 test_header "2.5 Search Tickets (XML format)"
-run_curl "curl -X GET \"${BASE_URL}/tickets-search.php.xml?query=test&limit=5\" \
+run_curl "curl -X GET \"${BASE_URL}/tickets-search.php/.xml?query=test&limit=5\" \
   -H \"X-API-Key: ${API_KEY}\" \
   -s"
 
@@ -149,12 +149,12 @@ run_curl "curl -X GET \"${BASE_URL}/tickets-update.php/${TICKET_TO_UPDATE}.json\
 section "4. LEGACY ENDPOINTS - tickets-stats.php"
 
 test_header "4.1 Get Ticket Statistics (JSON)"
-run_curl "curl -X GET \"${BASE_URL}/tickets-stats.php.json\" \
+run_curl "curl -X GET \"${BASE_URL}/tickets-stats.php/.json\" \
   -H \"X-API-Key: ${API_KEY}\" \
   -s | jq ."
 
 test_header "4.2 Get Ticket Statistics (XML)"
-run_curl "curl -X GET \"${BASE_URL}/tickets-stats.php.xml\" \
+run_curl "curl -X GET \"${BASE_URL}/tickets-stats.php/.xml\" \
   -H \"X-API-Key: ${API_KEY}\" \
   -s"
 
@@ -163,12 +163,12 @@ run_curl "curl -X GET \"${BASE_URL}/tickets-stats.php.xml\" \
 section "5. LEGACY ENDPOINTS - tickets-statuses.php"
 
 test_header "5.1 Get All Ticket Statuses (JSON)"
-run_curl "curl -X GET \"${BASE_URL}/tickets-statuses.php.json\" \
+run_curl "curl -X GET \"${BASE_URL}/tickets-statuses.php/.json\" \
   -H \"X-API-Key: ${API_KEY}\" \
   -s | jq ."
 
 test_header "5.2 Get All Ticket Statuses (XML)"
-run_curl "curl -X GET \"${BASE_URL}/tickets-statuses.php.xml\" \
+run_curl "curl -X GET \"${BASE_URL}/tickets-statuses.php/.xml\" \
   -H \"X-API-Key: ${API_KEY}\" \
   -s"
 
