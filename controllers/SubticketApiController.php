@@ -172,15 +172,85 @@ class SubticketApiController extends ExtendedTicketApiController {
         }
 
         // 7. Format parent ticket data using helper method
-        $status = $this->getTicketStatus($parentTicket);
+        return [
+            'parent' => $this->formatTicketData($parentTicket)
+        ];
+    }
+
+    /**
+     * Get list of child tickets for a parent ticket
+     *
+     * @param int $parentId Parent ticket ID
+     * @return array Array of child tickets
+     * @throws Exception 400 - Invalid ticket ID (ID must be > 0)
+     * @throws Exception 403 - API key not authorized for subticket management
+     * @throws Exception 404 - Parent ticket not found
+     * @throws Exception 501 - Subticket Manager Plugin not available
+     */
+    public function getList(int $parentId): array {
+        // 1. Validate ticket ID
+        if ($parentId <= 0) {
+            throw new Exception('Invalid ticket ID', 400);
+        }
+
+        // 2. Permission check
+        $this->requireSubticketPermission();
+
+        // 3. Plugin check
+        if (!$this->isSubticketPluginAvailable()) {
+            throw new Exception('Subticket plugin not available', 501);
+        }
+
+        // 4. Parent ticket lookup
+        $parentTicket = Ticket::lookup($parentId);
+        if (!$parentTicket) {
+            throw new Exception('Ticket not found', 404);
+        }
+
+        // 5. Get children via cached plugin instance
+        $plugin = $this->getSubticketPlugin();
+        $childIds = $plugin->getChildren($parentTicket);
+
+        // 6. Return empty array if no children
+        if (empty($childIds)) {
+            return ['children' => []];
+        }
+
+        // 7. Iterate over child IDs and build result array
+        $children = [];
+        foreach ($childIds as $childId) {
+            // Lookup child ticket
+            $childTicket = Ticket::lookup($childId);
+
+            // Skip if child ticket doesn't exist (orphaned reference)
+            if (!$childTicket) {
+                continue;
+            }
+
+            // Format ticket data using helper method
+            $children[] = $this->formatTicketData($childTicket);
+        }
+
+        return ['children' => $children];
+    }
+
+    /**
+     * Format ticket data for API response
+     *
+     * Formats a ticket object into standardized array structure
+     * Used by both getParent() and getList() to ensure consistency
+     *
+     * @param Ticket $ticket Ticket to format
+     * @return array Formatted ticket data with ticket_id, number, subject, status
+     */
+    private function formatTicketData(Ticket $ticket): array {
+        $status = $this->getTicketStatus($ticket);
 
         return [
-            'parent' => [
-                'ticket_id' => (int)$parentTicket->getId(),
-                'number' => $parentTicket->getNumber(),
-                'subject' => $parentTicket->getSubject(),
-                'status' => $status ? $status->getName() : 'Unknown',
-            ]
+            'ticket_id' => (int)$ticket->getId(),
+            'number' => $ticket->getNumber(),
+            'subject' => $ticket->getSubject(),
+            'status' => $status ? $status->getName() : 'Unknown',
         ];
     }
 }
