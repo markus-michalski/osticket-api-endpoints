@@ -342,29 +342,19 @@ class SubticketApiController extends ExtendedTicketApiController {
             throw new Exception('Child has no parent to unlink', 404);
         }
 
-        // 6. Prepare success response BEFORE removeLink() call
-        // WORKAROUND: The Subticket Manager Plugin's removeLink() method calls exit()
-        // which terminates PHP execution before we can return our response.
-        // We prepare the response data first and use a shutdown handler to send it.
-        $responseData = [
+        // 6. Remove the link using unlinkTicket method
+        $success = $plugin->unlinkTicket($childTicket->getId());
+
+        if (!$success) {
+            throw new Exception('Failed to unlink subticket', 500);
+        }
+
+        // 7. Return success response with child data
+        return [
             'success' => true,
             'message' => 'Subticket relationship removed successfully',
             'child' => $this->formatTicketData($childTicket),
         ];
-
-        // Register shutdown handler to send response if exit() is called
-        register_shutdown_function(function() use ($responseData) {
-            // Only send if no output has been sent yet
-            if (!headers_sent()) {
-                Http::response(200, json_encode($responseData, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE), 'application/json');
-            }
-        });
-
-        // 7. Remove the link (this may call exit() internally)
-        $plugin->removeLink($childTicket);
-
-        // 8. Return success response (this might not be reached if exit() was called)
-        return $responseData;
     }
 
     /**
