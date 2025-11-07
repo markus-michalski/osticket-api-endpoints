@@ -10,11 +10,12 @@ Perfect for integrations that need granular control beyond osTicket's standard A
 
 - ✅ **Extended Ticket Creation** - Markdown formatting, department routing, subticket support
 - ✅ **Ticket Management** - Update, retrieve, search, delete tickets via API
+- ✅ **Subticket API** - Manage parent-child relationships between tickets (NEW!)
 - ✅ **Ticket Statistics** - Get comprehensive stats (global, by department, by staff)
-- ✅ **Granular Permissions** - Fine-grained API key permissions (create, read, update, search, delete)
+- ✅ **Granular Permissions** - Fine-grained API key permissions (create, read, update, search, delete, subtickets)
 - ✅ **Name-Based Filters** - Use human-readable names instead of IDs
 - ✅ **No Core Modifications** - Signal-based architecture (update-safe)
-- ✅ **TDD-Tested** - 107 tests with comprehensive coverage
+- ✅ **TDD-Tested** - 77 tests with comprehensive coverage (64 unit + 13 integration)
 
 ## Use Cases
 
@@ -216,3 +217,33 @@ Inspired by the osTicket community's need for extended API capabilities and auto
 ## Changelog
 
 See [CHANGELOG.md](./CHANGELOG.md) for version history.
+
+## Subticket API
+
+Manage parent-child relationships between tickets with dedicated REST endpoints.
+
+**Requirements:**
+- API key with `can_manage_subtickets` permission
+- [Subticket Manager Plugin](https://github.com/clonemeagain/plugin-subticket) installed
+
+**Endpoints:**
+- `GET /api/tickets-subtickets-parent.php/{child_id}.json` - Get parent ticket
+- `GET /api/tickets-subtickets-list.php/{parent_id}.json` - Get all children
+- `POST /api/tickets-subtickets-create.php` - Create parent-child link
+- `DELETE /api/tickets-subtickets-unlink.php` - Remove parent-child link
+
+📖 **Full Documentation:** [docs/SUBTICKET_API.md](docs/SUBTICKET_API.md)
+
+**Example:**
+```bash
+# Link tickets
+curl -X POST "https://your-osticket.com/api/tickets-subtickets-create.php" \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"parent_id": 100, "child_id": 200}'
+
+# Get children
+curl -X GET "https://your-osticket.com/api/tickets-subtickets-list.php/100.json" \
+  -H "X-API-Key: YOUR_API_KEY"
+```
+
