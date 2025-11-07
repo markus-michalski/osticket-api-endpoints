@@ -39,11 +39,15 @@ try {
     $stats = $controller->getTicketStats();
 
     // Return stats as JSON
-    Http::response(200, json_encode($stats), 'application/json');
+    Http::response(200, json_encode($stats, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE), 'application/json');
 
 } catch (Exception $e) {
     // Handle errors
     $code = $e->getCode() ?: 400;
+    // Validate HTTP status code
+    if ($code < 100 || $code > 599) {
+        $code = 400;
+    }
     if ($code == 401) {
         Http::response(401, $e->getMessage(), 'text/plain');
     } else {
