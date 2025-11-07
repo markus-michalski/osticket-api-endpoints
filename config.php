@@ -537,23 +537,25 @@ class ApiEndpointsConfig extends PluginConfig {
                 $html .= '</div>';
             }
 
-            // Permission: Manage Subtickets (only if column exists AND subticket plugin available)
+            // Permission: Manage Subtickets (only if column exists)
             if ($hasSubticketColumn) {
                 // Check if subticket-manager plugin is available
                 $subticketPlugin = PluginManager::getInstance()->getPlugin('subticket-manager');
                 $isSubticketPluginActive = $subticketPlugin && method_exists($subticketPlugin, 'isActive') && $subticketPlugin->isActive();
 
-                if ($isSubticketPluginActive) {
-                    $html .= '<div class="permission-item">';
-                    $html .= '<input type="checkbox" name="api_key_subticket_permissions[' . $apiKeyId . ']" ' .
-                             'value="1" class="permission-checkbox" id="subticket_' . $apiKeyId . '" ' .
-                             ($canSubticket ? 'checked' : '') . ' />';
-                    $html .= '<label for="subticket_' . $apiKeyId . '">';
-                    $html .= '<strong>Manage Subtickets</strong>';
-                    $html .= '<span class="permission-endpoint">Subticket Operations</span>';
-                    $html .= '</label>';
-                    $html .= '</div>';
+                $html .= '<div class="permission-item' . (!$isSubticketPluginActive ? ' disabled' : '') . '" style="' . (!$isSubticketPluginActive ? 'opacity: 0.6;' : '') . '">';
+                $html .= '<input type="checkbox" name="api_key_subticket_permissions[' . $apiKeyId . ']" ' .
+                         'value="1" class="permission-checkbox" id="subticket_' . $apiKeyId . '" ' .
+                         ($canSubticket ? 'checked' : '') .
+                         (!$isSubticketPluginActive ? ' disabled' : '') . ' />';
+                $html .= '<label for="subticket_' . $apiKeyId . '">';
+                $html .= '<strong>Manage Subtickets</strong>';
+                if (!$isSubticketPluginActive) {
+                    $html .= ' <span style="color: #f44336; font-size: 11px;">(Requires Subticket Manager Plugin)</span>';
                 }
+                $html .= '<span class="permission-endpoint">Subticket Operations</span>';
+                $html .= '</label>';
+                $html .= '</div>';
             }
 
             $html .= '</div>'; // Close permissions-grid
