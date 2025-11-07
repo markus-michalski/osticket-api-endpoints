@@ -58,6 +58,10 @@ try {
 } catch (Exception $e) {
     // Handle errors
     $code = $e->getCode() ?: 400;
+    // Validate HTTP status code
+    if ($code < 100 || $code > 599) {
+        $code = 400;
+    }
     if ($code == 401) {
         Http::response(401, $e->getMessage(), 'text/plain');
     } elseif ($code == 404) {

@@ -192,7 +192,7 @@ if (!class_exists('Ticket')) {
         private $customData;
 
         public function __construct($data) {
-            $this->id = $data['id'];
+            $this->id = $data['ticket_id'] ?? $data['id'];
             $this->number = $data['number'];
             $this->subject = $data['subject'] ?? 'Test Ticket';
             $this->deptId = $data['dept_id'] ?? 1;
@@ -346,29 +346,46 @@ if (!class_exists('Ticket')) {
 if (!class_exists('API')) {
     class API {
         public static $mockData = [];
+        private $id;
         private $key;
         private $permissions = [];
+        private $restrictedDepartments = [];
         public $ht = []; // Match osTicket's API class structure
 
         public function __construct($data) {
+            $this->id = $data['id'] ?? null;
             $this->key = $data['key'];
             $this->permissions = $data['permissions'] ?? [];
+            $this->restrictedDepartments = $data['restricted_departments'] ?? [];
 
             // Store permissions in ht array to match real osTicket API class
+            // Check both $data and $this->permissions for consistency
             $this->ht = [
                 'apikey' => $data['key'],
-                'can_create_tickets' => $this->permissions['can_create_tickets'] ?? false,
-                'can_read_tickets' => $data['can_read_tickets'] ?? false,
-                'can_update_tickets' => $data['can_update_tickets'] ?? false,
-                'can_search_tickets' => $data['can_search_tickets'] ?? false,
-                'can_delete_tickets' => $data['can_delete_tickets'] ?? false,
-                'can_read_stats' => $data['can_read_stats'] ?? false,
+                'can_create_tickets' => $this->permissions['can_create_tickets'] ?? ($data['can_create_tickets'] ?? false),
+                'can_read_tickets' => $this->permissions['can_read_tickets'] ?? ($data['can_read_tickets'] ?? false),
+                'can_update_tickets' => $this->permissions['can_update_tickets'] ?? ($data['can_update_tickets'] ?? false),
+                'can_search_tickets' => $this->permissions['can_search_tickets'] ?? ($data['can_search_tickets'] ?? false),
+                'can_delete_tickets' => $this->permissions['can_delete_tickets'] ?? ($data['can_delete_tickets'] ?? false),
+                'can_read_stats' => $this->permissions['can_read_stats'] ?? ($data['can_read_stats'] ?? false),
+                'can_manage_subtickets' => $this->permissions['can_manage_subtickets'] ?? ($data['can_manage_subtickets'] ?? false),
             ];
         }
 
+        public static function lookupKey($key) {
+            return self::$mockData[$key] ?? null;
+        }
+
+        public function getId() { return $this->id; }
         public function getKey() { return $this->key; }
         public function canCreateTickets() {
             return $this->permissions['can_create_tickets'] ?? false;
+        }
+        public function getRestrictedDepartments() {
+            return $this->restrictedDepartments;
+        }
+        public function hasRestrictedDepartments() {
+            return !empty($this->restrictedDepartments);
         }
     }
 }
@@ -634,3 +651,10 @@ spl_autoload_register(function ($class) {
         require $file;
     }
 });
+
+// Load test fixtures
+require_once __DIR__ . '/fixtures/SubticketTestDataFactory.php';
+
+// Load controller classes
+require_once __DIR__ . '/../controllers/ExtendedTicketApiController.php';
+require_once __DIR__ . '/../controllers/SubticketApiController.php';

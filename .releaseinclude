@@ -5,16 +5,30 @@
 plugin.php
 class.ApiEndpointsPlugin.php
 config.php
+htaccess.template
 
 # Controllers
 controllers/
 controllers/ExtendedTicketApiController.php
 
-# API files
+# Libraries
+lib/
+lib/XmlHelper.php
+
+# API files (legacy endpoints)
 api/
-api/tickets-update.php
 api/tickets-get.php
 api/tickets-search.php
+api/tickets-update.php
+api/tickets-delete.php
+api/tickets-stats.php
+api/tickets-statuses.php
+
+# API files (subticket endpoints)
+api/tickets-subtickets-create.php
+api/tickets-subtickets-list.php
+api/tickets-subtickets-parent.php
+api/tickets-subtickets-unlink.php
 
 # Documentation
 README.md

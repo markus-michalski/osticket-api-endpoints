@@ -3,3 +3,10 @@
 
 # Claude Code project documentation (machine-specific)
 CLAUDE.md
+
+# Screenshots
+_Screenshots/
+
+# Test script with API credentials (should not be committed)
+TEST_CURL_COMMANDS.sh
+*.log

@@ -36,6 +36,7 @@ class ApiEndpointsPlugin extends Plugin {
     // So we cache config values statically during bootstrap
     static $cached_config = null;
 
+
     /**
      * Only one instance of this plugin makes sense
      */
@@ -97,7 +98,12 @@ class ApiEndpointsPlugin extends Plugin {
         $canUpdateTickets = '0';
 
         if ($apiKeyId) {
-            $sql = 'SELECT can_update_tickets FROM ' . API_KEY_TABLE . ' WHERE id = ' . $apiKeyId;
+            // Secure: Cast to integer to prevent SQL injection
+            $sql = sprintf(
+                'SELECT can_update_tickets FROM %s WHERE id = %d',
+                API_KEY_TABLE,
+                (int)$apiKeyId
+            );
             $result = db_query($sql);
             if ($result && ($row = db_fetch_array($result))) {
                 $canUpdateTickets = $row['can_update_tickets'] ?? '0';
@@ -416,6 +422,7 @@ class ApiEndpointsPlugin extends Plugin {
      * Called when plugin is enabled in admin panel
      */
     function enable() {
+        error_log('[API Endpoints] Plugin enable() called');
         $errors = array();
 
         // Auto-create instance for singleton plugin
@@ -431,6 +438,12 @@ class ApiEndpointsPlugin extends Plugin {
             }
         }
 
+        // IMPORTANT: Clean up any leftover files from previous installations
+        // This is necessary because osTicket does NOT call uninstall hooks when deleting plugins
+        // It only removes DB entries, leaving files behind
+        error_log('[API Endpoints] Cleaning up old installation files (if any)...');
+        $this->performCleanup();
+
         // Extend API Key table with new permissions
         $this->extendApiKeyTable($errors);
 
@@ -445,7 +458,46 @@ class ApiEndpointsPlugin extends Plugin {
             $this->getConfig()->set('installed_version', $plugin_info['version']);
         }
 
+        error_log('[API Endpoints] Plugin enabled successfully');
         return empty($errors) ? true : $errors;
+    }
+
+    /**
+     * Helper: Add column to API key table if it doesn't exist
+     *
+     * @param string $columnName Column name to add
+     * @param string $columnDefinition Full column definition (e.g., "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0")
+     * @param string $afterColumn Column to add after (optional)
+     * @param array $errors Error messages array (by reference)
+     * @return bool True on success
+     */
+    private function addColumnIfNotExists($columnName, $columnDefinition, $afterColumn = null, &$errors = array()) {
+        $table = API_KEY_TABLE;
+
+        // Secure: Escape column name for LIKE query
+        $escapedColumnName = db_real_escape($columnName);
+        $sql = sprintf("SHOW COLUMNS FROM `%s` LIKE '%s'", $table, $escapedColumnName);
+        $result = db_query($sql);
+
+        if (!$result || db_num_rows($result) == 0) {
+            // Column doesn't exist, add it
+            $alterSql = sprintf("ALTER TABLE `%s` ADD COLUMN `%s` %s",
+                $table,
+                $columnName,  // Column name in backticks for safety
+                $columnDefinition
+            );
+
+            if ($afterColumn) {
+                $alterSql .= sprintf(" AFTER `%s`", $afterColumn);
+            }
+
+            if (!db_query($alterSql)) {
+                $errors[] = sprintf('Failed to add %s column to API key table', $columnName);
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -455,75 +507,85 @@ class ApiEndpointsPlugin extends Plugin {
      * @return bool True on success
      */
     function extendApiKeyTable(&$errors) {
-        $table = API_KEY_TABLE;
         $success = true;
 
-        // Add can_update_tickets column if not exists
-        $sql = "SHOW COLUMNS FROM `$table` LIKE 'can_update_tickets'";
-        $result = db_query($sql);
+        // Define columns to add with their definitions and position
+        $columns = array(
+            array(
+                'name' => 'can_update_tickets',
+                'definition' => 'TINYINT(1) UNSIGNED NOT NULL DEFAULT 0',
+                'after' => 'can_create_tickets'
+            ),
+            array(
+                'name' => 'can_read_tickets',
+                'definition' => 'TINYINT(1) UNSIGNED NOT NULL DEFAULT 0',
+                'after' => 'can_update_tickets'
+            ),
+            array(
+                'name' => 'can_search_tickets',
+                'definition' => 'TINYINT(1) UNSIGNED NOT NULL DEFAULT 0',
+                'after' => 'can_read_tickets'
+            ),
+            array(
+                'name' => 'can_delete_tickets',
+                'definition' => 'TINYINT(1) UNSIGNED NOT NULL DEFAULT 0',
+                'after' => 'can_search_tickets'
+            ),
+            array(
+                'name' => 'can_read_stats',
+                'definition' => 'TINYINT(1) UNSIGNED NOT NULL DEFAULT 0',
+                'after' => 'can_delete_tickets'
+            ),
+            array(
+                'name' => 'can_manage_subtickets',
+                'definition' => 'TINYINT(1) UNSIGNED NOT NULL DEFAULT 0',
+                'after' => 'can_read_stats'
+            )
+        );
 
-        if (!$result || db_num_rows($result) == 0) {
-            $sql = "ALTER TABLE `$table` ADD COLUMN `can_update_tickets` TINYINT(1) UNSIGNED NOT NULL DEFAULT 0 AFTER `can_create_tickets`";
-
-            if (!db_query($sql)) {
-                $errors[] = 'Failed to add can_update_tickets column to API key table';
-                $success = false;
-            }
-        }
-
-        // Add can_read_tickets column if not exists
-        $sql = "SHOW COLUMNS FROM `$table` LIKE 'can_read_tickets'";
-        $result = db_query($sql);
-
-        if (!$result || db_num_rows($result) == 0) {
-            $sql = "ALTER TABLE `$table` ADD COLUMN `can_read_tickets` TINYINT(1) UNSIGNED NOT NULL DEFAULT 0 AFTER `can_update_tickets`";
-
-            if (!db_query($sql)) {
-                $errors[] = 'Failed to add can_read_tickets column to API key table';
-                $success = false;
-            }
-        }
-
-        // Add can_search_tickets column if not exists
-        $sql = "SHOW COLUMNS FROM `$table` LIKE 'can_search_tickets'";
-        $result = db_query($sql);
-
-        if (!$result || db_num_rows($result) == 0) {
-            $sql = "ALTER TABLE `$table` ADD COLUMN `can_search_tickets` TINYINT(1) UNSIGNED NOT NULL DEFAULT 0 AFTER `can_read_tickets`";
-
-            if (!db_query($sql)) {
-                $errors[] = 'Failed to add can_search_tickets column to API key table';
-                $success = false;
-            }
-        }
-
-        // Add can_delete_tickets column if not exists
-        $sql = "SHOW COLUMNS FROM `$table` LIKE 'can_delete_tickets'";
-        $result = db_query($sql);
-
-        if (!$result || db_num_rows($result) == 0) {
-            $sql = "ALTER TABLE `$table` ADD COLUMN `can_delete_tickets` TINYINT(1) UNSIGNED NOT NULL DEFAULT 0 AFTER `can_search_tickets`";
-
-            if (!db_query($sql)) {
-                $errors[] = 'Failed to add can_delete_tickets column to API key table';
-                $success = false;
-            }
-        }
-
-        // Add can_read_stats column if not exists
-        $sql = "SHOW COLUMNS FROM `$table` LIKE 'can_read_stats'";
-        $result = db_query($sql);
-
-        if (!$result || db_num_rows($result) == 0) {
-            $sql = "ALTER TABLE `$table` ADD COLUMN `can_read_stats` TINYINT(1) UNSIGNED NOT NULL DEFAULT 0 AFTER `can_delete_tickets`";
-
-            if (!db_query($sql)) {
-                $errors[] = 'Failed to add can_read_stats column to API key table';
+        // Add each column using helper method
+        foreach ($columns as $column) {
+            if (!$this->addColumnIfNotExists(
+                $column['name'],
+                $column['definition'],
+                $column['after'],
+                $errors
+            )) {
                 $success = false;
             }
         }
 
         return $success;
+    }
+
+    /**
+     * Helper: Remove column from API key table if it exists
+     *
+     * @param string $columnName Column name to remove
+     * @return bool True on success
+     */
+    private function removeColumnIfExists($columnName) {
+        $table = API_KEY_TABLE;
+
+        // Secure: Escape column name for LIKE query
+        $escapedColumnName = db_real_escape($columnName);
+        $sql = sprintf("SHOW COLUMNS FROM `%s` LIKE '%s'", $table, $escapedColumnName);
+        $result = db_query($sql);
+
+        if ($result && db_num_rows($result) > 0) {
+            // Column exists, remove it
+            error_log('[API Endpoints] Removing column: ' . $columnName);
+            $sql = sprintf("ALTER TABLE `%s` DROP COLUMN `%s`", $table, $columnName);
+            if (!db_query($sql)) {
+                error_log('[API Endpoints] FAILED to remove column: ' . $columnName);
+                return false;
+            }
+            error_log('[API Endpoints] Successfully removed column: ' . $columnName);
+        } else {
+            error_log('[API Endpoints] Column does not exist (already removed?): ' . $columnName);
+        }
+
+        return true;
     }
 
     /**
@@ -532,69 +594,41 @@ class ApiEndpointsPlugin extends Plugin {
      * @return bool True on success
      */
     function removeApiKeyTableExtensions() {
-        $table = API_KEY_TABLE;
+        error_log('[API Endpoints] Removing database columns from api_key table...');
         $success = true;
+        $removed_count = 0;
+        $failed_count = 0;
 
-        // Remove can_read_stats column if exists
-        $sql = "SHOW COLUMNS FROM `$table` LIKE 'can_read_stats'";
-        $result = db_query($sql);
+        // List of columns to remove (in reverse order of adding)
+        $columnsToRemove = array(
+            'can_manage_subtickets',
+            'can_read_stats',
+            'can_delete_tickets',
+            'can_search_tickets',
+            'can_read_tickets',
+            'can_update_tickets'
+        );
 
-        if ($result && db_num_rows($result) > 0) {
-            $sql = "ALTER TABLE `$table` DROP COLUMN `can_read_stats`";
-            if (!db_query($sql)) {
+        // Remove each column using helper method
+        foreach ($columnsToRemove as $columnName) {
+            if ($this->removeColumnIfExists($columnName)) {
+                $removed_count++;
+            } else {
+                $failed_count++;
                 $success = false;
             }
         }
 
-        // Remove can_delete_tickets column if exists
-        $sql = "SHOW COLUMNS FROM `$table` LIKE 'can_delete_tickets'";
-        $result = db_query($sql);
-
-        if ($result && db_num_rows($result) > 0) {
-            $sql = "ALTER TABLE `$table` DROP COLUMN `can_delete_tickets`";
-            if (!db_query($sql)) {
-                $success = false;
-            }
-        }
-
-        // Remove can_search_tickets column if exists
-        $sql = "SHOW COLUMNS FROM `$table` LIKE 'can_search_tickets'";
-        $result = db_query($sql);
-
-        if ($result && db_num_rows($result) > 0) {
-            $sql = "ALTER TABLE `$table` DROP COLUMN `can_search_tickets`";
-            if (!db_query($sql)) {
-                $success = false;
-            }
-        }
-
-        // Remove can_read_tickets column if exists
-        $sql = "SHOW COLUMNS FROM `$table` LIKE 'can_read_tickets'";
-        $result = db_query($sql);
-
-        if ($result && db_num_rows($result) > 0) {
-            $sql = "ALTER TABLE `$table` DROP COLUMN `can_read_tickets`";
-            if (!db_query($sql)) {
-                $success = false;
-            }
-        }
-
-        // Remove can_update_tickets column if exists
-        $sql = "SHOW COLUMNS FROM `$table` LIKE 'can_update_tickets'";
-        $result = db_query($sql);
-
-        if ($result && db_num_rows($result) > 0) {
-            $sql = "ALTER TABLE `$table` DROP COLUMN `can_update_tickets`";
-            if (!db_query($sql)) {
-                $success = false;
-            }
-        }
+        error_log(sprintf('[API Endpoints] Database cleanup: %d columns removed, %d failed', $removed_count, $failed_count));
 
         return $success;
     }
 
     /**
-     * Deploy API files to /api/ directory
+     * Deploy API files to /api/ directory (DYNAMIC)
+     *
+     * Scans plugin's api/ directory and deploys all *.php files automatically.
+     * No need to manually add new endpoints to this method!
      *
      * @param array $errors Error messages array (by reference)
      * @return bool True on success
@@ -602,192 +636,129 @@ class ApiEndpointsPlugin extends Plugin {
     function deployApiFiles(&$errors) {
         $success = true;
 
-        // Deploy tickets-update.php
-        $update_source = __DIR__ . '/api/tickets-update.php';
-        $update_target = INCLUDE_DIR . '../api/tickets-update.php';
+        // Get plugin's api/ directory
+        $source_dir = __DIR__ . '/api/';
+        $target_dir = INCLUDE_DIR . '../api/';
 
-        if (!file_exists($update_source)) {
-            $errors[] = 'API file not found: ' . $update_source;
-            $success = false;
-        } elseif (!copy($update_source, $update_target)) {
-            $errors[] = 'Failed to deploy tickets-update.php to /api/';
-            $success = false;
+        // Check if source directory exists
+        if (!is_dir($source_dir)) {
+            $errors[] = 'Plugin API directory not found: ' . $source_dir;
+            return false;
         }
 
-        // Deploy tickets-get.php
-        $get_source = __DIR__ . '/api/tickets-get.php';
-        $get_target = INCLUDE_DIR . '../api/tickets-get.php';
+        // Scan for all PHP files in plugin's api/ directory
+        $api_files = glob($source_dir . '*.php');
 
-        if (!file_exists($get_source)) {
-            $errors[] = 'API file not found: ' . $get_source;
-            $success = false;
-        } elseif (!copy($get_source, $get_target)) {
-            $errors[] = 'Failed to deploy tickets-get.php to /api/';
-            $success = false;
+        if (empty($api_files)) {
+            $errors[] = 'No API files found in plugin directory: ' . $source_dir;
+            return false;
         }
 
-        // Deploy tickets-search.php
-        $search_source = __DIR__ . '/api/tickets-search.php';
-        $search_target = INCLUDE_DIR . '../api/tickets-search.php';
+        // Deploy each file
+        foreach ($api_files as $source_file) {
+            $filename = basename($source_file);
+            $target_file = $target_dir . $filename;
 
-        if (!file_exists($search_source)) {
-            $errors[] = 'API file not found: ' . $search_source;
-            $success = false;
-        } elseif (!copy($search_source, $search_target)) {
-            $errors[] = 'Failed to deploy tickets-search.php to /api/';
-            $success = false;
+            if (!copy($source_file, $target_file)) {
+                $errors[] = sprintf('Failed to deploy %s to /api/', $filename);
+                $success = false;
+            }
         }
 
-        // Deploy tickets-delete.php
-        $delete_source = __DIR__ . '/api/tickets-delete.php';
-        $delete_target = INCLUDE_DIR . '../api/tickets-delete.php';
-
-        if (!file_exists($delete_source)) {
-            $errors[] = 'API file not found: ' . $delete_source;
-            $success = false;
-        } elseif (!copy($delete_source, $delete_target)) {
-            $errors[] = 'Failed to deploy tickets-delete.php to /api/';
-            $success = false;
-        }
-
-        // Deploy tickets-stats.php
-        $stats_source = __DIR__ . '/api/tickets-stats.php';
-        $stats_target = INCLUDE_DIR . '../api/tickets-stats.php';
-
-        if (!file_exists($stats_source)) {
-            $errors[] = 'API file not found: ' . $stats_source;
-            $success = false;
-        } elseif (!copy($stats_source, $stats_target)) {
-            $errors[] = 'Failed to deploy tickets-stats.php to /api/';
-            $success = false;
-        }
-
-        // Add .htaccess rule if not present
+        // Add .htaccess rules for all deployed files
         $this->addHtaccessRule($errors);
 
         return $success;
     }
 
     /**
-     * Add rewrite rule to /api/.htaccess
+     * Add rewrite rules to /api/.htaccess (STATIC TEMPLATE)
+     *
+     * Reads htaccess.template from plugin directory and inserts the rules
+     * into /api/.htaccess. This is more stable than dynamically generating rules.
+     *
+     * Template file: include/plugins/api-endpoints/htaccess.template
+     * Target file: api/.htaccess
      *
      * @param array $errors Error messages array (by reference)
      * @return bool True on success
      */
     function addHtaccessRule(&$errors) {
         $htaccess_file = INCLUDE_DIR . '../api/.htaccess';
+        $template_file = __DIR__ . '/htaccess.template';
 
         // Check if .htaccess exists
         if (!file_exists($htaccess_file)) {
-            $errors[] = 'Warning: .htaccess not found in /api/ - you may need to add rewrite rule manually';
+            $errors[] = 'Warning: .htaccess not found in /api/ - you may need to add rewrite rules manually';
+            return false;
+        }
+
+        // Check if template exists
+        if (!file_exists($template_file)) {
+            $errors[] = 'Warning: htaccess.template not found in plugin directory';
             return false;
         }
 
         // Read current .htaccess
         $content = file_get_contents($htaccess_file);
 
-        $updated = false;
+        // Read template
+        $template_rules = file_get_contents($template_file);
 
-        // Check and add tickets-update.php rule if not present
-        if (strpos($content, 'tickets-update\.php/') === false) {
-            $update_rule = "\n# Ticket Update API endpoint (pass through without rewriting)\nRewriteRule ^tickets-update\.php/ - [L]\n";
+        // Check if rules are already present (look for marker comment)
+        if (strpos($content, 'API Endpoints Plugin - Apache Rewrite Rules') !== false) {
+            // Rules already exist - REMOVE them first, then insert fresh copy
+            // This ensures updates to htaccess.template are always applied
+            error_log('[API Endpoints] Replacing existing .htaccess rules with updated template');
+            $this->removeHtaccessRule();
 
-            // Find the wildcard rule
-            $wildcard_pos = strpos($content, 'RewriteRule ^wildcard/');
-            if ($wildcard_pos === false) {
-                $errors[] = 'Warning: Could not find wildcard rule in .htaccess - adding rule at end';
-                // Add at end before </IfModule>
-                $content = str_replace('</IfModule>', $update_rule . "\n</IfModule>", $content);
-            } else {
-                // Find end of wildcard rule line
-                $line_end = strpos($content, "\n", $wildcard_pos);
-                // Insert after wildcard rule
-                $content = substr_replace($content, $update_rule, $line_end + 1, 0);
-            }
-            $updated = true;
+            // Re-read .htaccess after removal
+            $content = file_get_contents($htaccess_file);
         }
 
-        // Check and add tickets-get.php rule if not present
-        if (strpos($content, 'tickets-get\.php/') === false) {
-            $get_rule = "\n# Ticket Get API endpoint (pass through without rewriting)\nRewriteRule ^tickets-get\.php/ - [L]\n";
+        // Find insertion point (after wildcard rule, before default osTicket rule)
+        $wildcard_pos = strpos($content, 'RewriteRule ^wildcard/');
+        $insert_pos = false;
 
-            // Find the tickets-update rule (should be there now)
-            $update_pos = strpos($content, 'RewriteRule ^tickets-update\.php/');
-            if ($update_pos !== false) {
-                // Insert after tickets-update rule
-                $line_end = strpos($content, "\n", $update_pos);
-                $content = substr_replace($content, $get_rule, $line_end + 1, 0);
+        if ($wildcard_pos !== false) {
+            // Insert after wildcard rule (find end of line)
+            $insert_pos = strpos($content, "\n", $wildcard_pos) + 1;
+        } else {
+            // Fallback: Look for default API rule comment
+            $default_comment_pos = strpos($content, '# Default API endpoint');
+            if ($default_comment_pos !== false) {
+                $insert_pos = $default_comment_pos;
             } else {
-                // Fallback: add at end before </IfModule>
-                $content = str_replace('</IfModule>', $get_rule . "\n</IfModule>", $content);
+                // Fallback: Insert before </IfModule>
+                $ifmodule_pos = strpos($content, '</IfModule>');
+                if ($ifmodule_pos !== false) {
+                    $insert_pos = $ifmodule_pos;
+                }
             }
-            $updated = true;
         }
 
-        // Check and add tickets-search.php rule if not present
-        if (strpos($content, 'tickets-search\.php') === false) {
-            $search_rule = "\n# Ticket Search API endpoint (pass through without rewriting)\nRewriteRule ^tickets-search\.php - [L]\n";
-
-            // Find the tickets-get rule (should be there now)
-            $get_pos = strpos($content, 'RewriteRule ^tickets-get\.php/');
-            if ($get_pos !== false) {
-                // Insert after tickets-get rule
-                $line_end = strpos($content, "\n", $get_pos);
-                $content = substr_replace($content, $search_rule, $line_end + 1, 0);
-            } else {
-                // Fallback: add at end before </IfModule>
-                $content = str_replace('</IfModule>', $search_rule . "\n</IfModule>", $content);
-            }
-            $updated = true;
+        if ($insert_pos === false) {
+            $errors[] = 'Warning: Could not find insertion point in .htaccess';
+            return false;
         }
 
-        // Check and add tickets-delete.php rule if not present
-        if (strpos($content, 'tickets-delete\.php/') === false) {
-            $delete_rule = "\n# Ticket Delete API endpoint (pass through without rewriting)\nRewriteRule ^tickets-delete\.php/ - [L]\n";
+        // Insert template rules
+        $content = substr_replace($content, "\n" . $template_rules . "\n", $insert_pos, 0);
 
-            // Find the tickets-search rule (should be there now)
-            $search_pos = strpos($content, 'RewriteRule ^tickets-search\.php');
-            if ($search_pos !== false) {
-                // Insert after tickets-search rule
-                $line_end = strpos($content, "\n", $search_pos);
-                $content = substr_replace($content, $delete_rule, $line_end + 1, 0);
-            } else {
-                // Fallback: add at end before </IfModule>
-                $content = str_replace('</IfModule>', $delete_rule . "\n</IfModule>", $content);
-            }
-            $updated = true;
-        }
-
-        // Check and add tickets-stats.php rule if not present
-        if (strpos($content, 'tickets-stats\.php') === false) {
-            $stats_rule = "\n# Ticket Stats API endpoint (pass through without rewriting)\nRewriteRule ^tickets-stats\.php - [L]\n";
-
-            // Find the tickets-delete rule (should be there now)
-            $delete_pos = strpos($content, 'RewriteRule ^tickets-delete\.php');
-            if ($delete_pos !== false) {
-                // Insert after tickets-delete rule
-                $line_end = strpos($content, "\n", $delete_pos);
-                $content = substr_replace($content, $stats_rule, $line_end + 1, 0);
-            } else {
-                // Fallback: add at end before </IfModule>
-                $content = str_replace('</IfModule>', $stats_rule . "\n</IfModule>", $content);
-            }
-            $updated = true;
-        }
-
-        // Write back to file only if changes were made
-        if ($updated) {
-            if (!file_put_contents($htaccess_file, $content)) {
-                $errors[] = 'Failed to update .htaccess - you may need to add rewrite rule manually';
-                return false;
-            }
+        // Write back to file
+        if (!file_put_contents($htaccess_file, $content)) {
+            $errors[] = 'Failed to update .htaccess - you may need to add rewrite rules manually';
+            return false;
         }
 
         return true;
     }
 
     /**
-     * Remove rewrite rules from /api/.htaccess
+     * Remove rewrite rules from /api/.htaccess (STATIC TEMPLATE)
+     *
+     * Removes the entire template block from .htaccess by finding the marker comment.
+     * Works even after plugin directory is deleted!
      *
      * @return bool True on success
      */
@@ -795,100 +766,138 @@ class ApiEndpointsPlugin extends Plugin {
         $htaccess_file = INCLUDE_DIR . '../api/.htaccess';
 
         if (!file_exists($htaccess_file)) {
-            return true;
+            error_log('[API Endpoints] .htaccess not found: ' . $htaccess_file);
+            return true; // Nothing to clean
         }
 
         $content = file_get_contents($htaccess_file);
+        if ($content === false) {
+            error_log('[API Endpoints] FAILED to read .htaccess: ' . $htaccess_file);
+            return false;
+        }
 
-        // Remove tickets-update.php rule block (including comment)
-        $pattern = '/\n# Ticket Update API endpoint.*?\nRewriteRule \^tickets-update\\\.php\/ - \[L\]\n/s';
-        $content = preg_replace($pattern, "\n", $content);
+        // Find start of our template block (marker comment)
+        $marker = '# =============================================================================';
+        $start_pos = strpos($content, $marker . "\n# API Endpoints Plugin - Apache Rewrite Rules");
 
-        // Remove tickets-get.php rule block (including comment)
-        $pattern = '/\n# Ticket Get API endpoint.*?\nRewriteRule \^tickets-get\\\.php\/ - \[L\]\n/s';
-        $content = preg_replace($pattern, "\n", $content);
+        if ($start_pos === false) {
+            error_log('[API Endpoints] No .htaccess rules found to remove (marker not found)');
+            return true; // Nothing to remove
+        }
 
-        // Remove tickets-search.php rule block (including comment)
-        $pattern = '/\n# Ticket Search API endpoint.*?\nRewriteRule \^tickets-search\\\.php - \[L\]\n/s';
-        $content = preg_replace($pattern, "\n", $content);
+        // Find end of template block (next empty line or closing IfModule)
+        // The template ends with the last RewriteRule line, so we look for the pattern:
+        // RewriteRule ^tickets-subtickets-unlink\.php/ - [L]
+        $search_start = $start_pos;
+        $end_marker = 'RewriteRule ^tickets-subtickets-unlink\.php/ - [L]';
+        $end_pos = strpos($content, $end_marker, $search_start);
 
-        // Remove tickets-delete.php rule block (including comment)
-        $pattern = '/\n# Ticket Delete API endpoint.*?\nRewriteRule \^tickets-delete\\\.php\/ - \[L\]\n/s';
-        $content = preg_replace($pattern, "\n", $content);
+        if ($end_pos === false) {
+            // Fallback: look for any RewriteRule pattern and find the last one in our block
+            error_log('[API Endpoints] Could not find end marker, using fallback pattern');
+            // Find all RewriteRule lines after start_pos until we hit a non-tickets rule
+            preg_match('/RewriteRule \^tickets-[^\n]+\n(?!\s*RewriteRule \^tickets-)/',
+                       substr($content, $start_pos), $matches, PREG_OFFSET_CAPTURE);
+            if (!empty($matches)) {
+                $end_pos = $start_pos + $matches[0][1] + strlen($matches[0][0]);
+            } else {
+                error_log('[API Endpoints] Could not determine end of template block');
+                return false;
+            }
+        } else {
+            // Move past the end marker line
+            $end_pos = strpos($content, "\n", $end_pos) + 1;
+        }
 
-        // Remove tickets-stats.php rule block (including comment)
-        $pattern = '/\n# Ticket Stats API endpoint.*?\nRewriteRule \^tickets-stats\\\.php - \[L\]\n/s';
-        $content = preg_replace($pattern, "\n", $content);
+        // Remove the entire block (including leading newline)
+        $content = substr_replace($content, '', $start_pos, $end_pos - $start_pos);
 
-        file_put_contents($htaccess_file, $content);
+        // Write back
+        $result = file_put_contents($htaccess_file, $content);
+        if ($result === false) {
+            error_log('[API Endpoints] FAILED to write .htaccess: ' . $htaccess_file . ' (check permissions)');
+            return false;
+        }
 
+        error_log('[API Endpoints] Removed .htaccess template block');
         return true;
     }
 
     /**
-     * Remove deployed API files from /api/ directory
+     * Remove deployed API files from /api/ directory (DYNAMIC)
+     *
+     * Scans /api/ directory for files deployed by this plugin and removes them.
+     * Works even after plugin directory is deleted!
      *
      * @return bool True on success
      */
     function removeApiFiles() {
-        // Remove .htaccess rules
+        // Remove .htaccess rules first
         $this->removeHtaccessRule();
 
-        // Remove tickets-update.php
-        $update_target = INCLUDE_DIR . '../api/tickets-update.php';
-        if (file_exists($update_target)) {
-            @unlink($update_target);
+        // Scan /api/ directory for our deployed files (tickets-*.php pattern)
+        $target_dir = INCLUDE_DIR . '../api/';
+
+        // Check if target directory exists
+        if (!is_dir($target_dir)) {
+            error_log('[API Endpoints] Target directory does not exist: ' . $target_dir);
+            return false;
         }
 
-        // Remove tickets-get.php
-        $get_target = INCLUDE_DIR . '../api/tickets-get.php';
-        if (file_exists($get_target)) {
-            @unlink($get_target);
+        $deployed_files = glob($target_dir . 'tickets-*.php');
+
+        if (empty($deployed_files)) {
+            error_log('[API Endpoints] No tickets-*.php files found in: ' . $target_dir);
+            return true; // No files to remove
         }
 
-        // Remove tickets-search.php
-        $search_target = INCLUDE_DIR . '../api/tickets-search.php';
-        if (file_exists($search_target)) {
-            @unlink($search_target);
+        // Remove each deployed file
+        $removed_count = 0;
+        $failed_count = 0;
+        foreach ($deployed_files as $target_file) {
+            if (file_exists($target_file)) {
+                if (unlink($target_file)) {
+                    $removed_count++;
+                    error_log('[API Endpoints] Removed: ' . basename($target_file));
+                } else {
+                    $failed_count++;
+                    error_log('[API Endpoints] FAILED to remove: ' . $target_file . ' (check permissions)');
+                }
+            }
         }
 
-        // Remove tickets-delete.php
-        $delete_target = INCLUDE_DIR . '../api/tickets-delete.php';
-        if (file_exists($delete_target)) {
-            @unlink($delete_target);
-        }
+        error_log(sprintf('[API Endpoints] Cleanup complete: %d removed, %d failed', $removed_count, $failed_count));
 
-        // Remove tickets-stats.php
-        $stats_target = INCLUDE_DIR . '../api/tickets-stats.php';
-        if (file_exists($stats_target)) {
-            @unlink($stats_target);
-        }
-
-        return true;
+        return ($failed_count === 0);
     }
 
     /**
      * Called when plugin is disabled in admin panel
+     *
+     * Note: We don't remove files here because the plugin might be temporarily disabled
+     * for testing purposes. Files and database columns remain intact.
      */
     function disable() {
-        // Remove deployed API files
-        $this->removeApiFiles();
-
+        // Do nothing - plugin can be re-enabled without losing configuration
         return true;
     }
 
     /**
-     * Called when plugin is uninstalled
+     * Perform cleanup operations
+     *
+     * Called from enable() to clean up leftover files from previous installations.
+     *
+     * NOTE: osTicket does NOT call uninstall/disable hooks when deleting plugins!
+     * It only removes database entries, leaving files behind. Therefore we clean up
+     * old files during enable() before deploying new ones.
      */
-    function uninstall(&$errors) {
-        // Remove deployed API files
-        $this->removeApiFiles();
+    private function performCleanup() {
+        // Remove deployed API files and .htaccess rules (if any exist)
+        if (!$this->removeApiFiles()) {
+            error_log('[API Endpoints] WARNING: File removal had errors (check permissions)');
+        }
 
-        // Optional: Remove API Key table extensions
-        // Note: This will delete the can_update_tickets column and all permission data!
-        // Uncomment if you want to clean up completely on uninstall
-        // $this->removeApiKeyTableExtensions();
-
-        return parent::uninstall($errors);
+        // Do NOT remove database columns here - they should persist across reinstalls
+        // Database columns are only removed if user manually uninstalls AND cleans up
     }
 }

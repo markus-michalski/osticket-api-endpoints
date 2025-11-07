@@ -21,6 +21,7 @@ require_once(INCLUDE_DIR.'class.ticket.php');
 $plugin_path = INCLUDE_DIR.'plugins/api-endpoints/';
 if (file_exists($plugin_path.'controllers/ExtendedTicketApiController.php')) {
     require_once($plugin_path.'controllers/ExtendedTicketApiController.php');
+    require_once($plugin_path.'lib/XmlHelper.php');
 } else {
     Http::response(500, 'API Endpoints Plugin not properly installed', 'text/plain');
     exit;
@@ -84,16 +85,20 @@ try {
 
     // Return success with tickets array
     if ($format === 'json') {
-        Http::response(200, json_encode($tickets), 'application/json');
+        Http::response(200, json_encode($tickets, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE), 'application/json');
     } else {
         // XML format
-        $xml = arrayToXml(array('tickets' => $tickets), 'result');
+        $xml = XmlHelper::arrayToXml(array('tickets' => $tickets), 'result');
         Http::response(200, $xml, 'application/xml');
     }
 
 } catch (Exception $e) {
     // Handle errors
     $code = $e->getCode() ?: 400;
+    // Validate HTTP status code
+    if ($code < 100 || $code > 599) {
+        $code = 400;
+    }
     if ($code == 401) {
         Http::response(401, $e->getMessage(), 'text/plain');
     } elseif ($code == 404) {
@@ -103,28 +108,3 @@ try {
     }
 }
 
-/**
- * Convert array to XML
- */
-function arrayToXml($data, $rootElement = 'root') {
-    $xml = new SimpleXMLElement("<$rootElement/>");
-    arrayToXmlRecursive($data, $xml);
-    return $xml->asXML();
-}
-
-/**
- * Recursive helper for array to XML conversion
- */
-function arrayToXmlRecursive($data, &$xml) {
-    foreach ($data as $key => $value) {
-        if (is_array($value)) {
-            if (is_numeric($key)) {
-                $key = 'item';
-            }
-            $subnode = $xml->addChild($key);
-            arrayToXmlRecursive($value, $subnode);
-        } else {
-            $xml->addChild($key, htmlspecialchars($value));
-        }
-    }
-}

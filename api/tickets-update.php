@@ -42,7 +42,7 @@ $format = $matches['format'];
 
 // Only accept PATCH or PUT methods
 $method = $_SERVER['REQUEST_METHOD'];
-if (!in_array($method, ['PATCH', 'PUT'])) {
+if (!in_array($method, ['PATCH', 'PUT'], true)) { // Strict comparison for type safety
     Http::response(405, 'Method Not Allowed. Use PATCH or PUT', 'text/plain');
     exit;
 }
@@ -52,15 +52,32 @@ $data = null;
 if (isset($_SERVER['CONTENT_TYPE']) &&
     strpos($_SERVER['CONTENT_TYPE'], 'application/json') !== false) {
     $body = file_get_contents('php://input');
-    $data = json_decode($body, true);
-    if (!$data) {
-        Http::response(400, 'Invalid JSON body', 'text/plain');
+
+    // Security: Limit JSON depth to prevent JSON bomb DoS attacks
+    try {
+        $data = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
+    } catch (JsonException $e) {
+        Http::response(400, json_encode([
+            'error' => true,
+            'message' => 'Invalid JSON: ' . $e->getMessage()
+        ], JSON_UNESCAPED_UNICODE), 'application/json');
+        exit;
+    }
+
+    if (empty($data)) {
+        Http::response(400, json_encode([
+            'error' => true,
+            'message' => 'No data provided in JSON body'
+        ], JSON_UNESCAPED_UNICODE), 'application/json');
         exit;
     }
 } elseif ($_POST) {
     $data = $_POST;
 } else {
-    Http::response(400, 'No data provided', 'text/plain');
+    Http::response(400, json_encode([
+        'error' => true,
+        'message' => 'No data provided'
+    ], JSON_UNESCAPED_UNICODE), 'application/json');
     exit;
 }
 
@@ -75,6 +92,10 @@ try {
 } catch (Exception $e) {
     // Handle errors
     $code = $e->getCode() ?: 400;
+    // Validate HTTP status code
+    if ($code < 100 || $code > 599) {
+        $code = 400;
+    }
     if ($code == 401) {
         Http::response(401, $e->getMessage(), 'text/plain');
     } elseif ($code == 404) {
