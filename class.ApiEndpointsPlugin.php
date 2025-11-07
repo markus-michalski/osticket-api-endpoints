@@ -565,10 +565,15 @@ class ApiEndpointsPlugin extends Plugin {
 
         if ($result && db_num_rows($result) > 0) {
             // Column exists, remove it
+            error_log('[API Endpoints] Removing column: ' . $columnName);
             $sql = sprintf("ALTER TABLE `%s` DROP COLUMN `%s`", $table, $columnName);
             if (!db_query($sql)) {
+                error_log('[API Endpoints] FAILED to remove column: ' . $columnName);
                 return false;
             }
+            error_log('[API Endpoints] Successfully removed column: ' . $columnName);
+        } else {
+            error_log('[API Endpoints] Column does not exist (already removed?): ' . $columnName);
         }
 
         return true;
@@ -580,7 +585,10 @@ class ApiEndpointsPlugin extends Plugin {
      * @return bool True on success
      */
     function removeApiKeyTableExtensions() {
+        error_log('[API Endpoints] Removing database columns from api_key table...');
         $success = true;
+        $removed_count = 0;
+        $failed_count = 0;
 
         // List of columns to remove (in reverse order of adding)
         $columnsToRemove = array(
@@ -594,10 +602,15 @@ class ApiEndpointsPlugin extends Plugin {
 
         // Remove each column using helper method
         foreach ($columnsToRemove as $columnName) {
-            if (!$this->removeColumnIfExists($columnName)) {
+            if ($this->removeColumnIfExists($columnName)) {
+                $removed_count++;
+            } else {
+                $failed_count++;
                 $success = false;
             }
         }
+
+        error_log(sprintf('[API Endpoints] Database cleanup: %d columns removed, %d failed', $removed_count, $failed_count));
 
         return $success;
     }
@@ -856,25 +869,34 @@ class ApiEndpointsPlugin extends Plugin {
 
     /**
      * Called when plugin is disabled in admin panel
+     *
+     * Note: We don't remove files here because the plugin might be temporarily disabled
+     * for testing purposes. Files and database columns remain intact.
      */
     function disable() {
-        // Remove deployed API files
-        $this->removeApiFiles();
-
+        // Do nothing - plugin can be re-enabled without losing configuration
         return true;
     }
 
     /**
-     * Called when plugin is uninstalled
+     * Called when plugin is uninstalled (deleted)
+     *
+     * This performs complete cleanup:
+     * - Removes all deployed API files from /api/
+     * - Removes .htaccess rewrite rules
+     * - Removes database columns from api_key table
      */
     function uninstall(&$errors) {
-        // Remove deployed API files
+        error_log('[API Endpoints] Starting uninstall cleanup...');
+
+        // Remove deployed API files and .htaccess rules
         $this->removeApiFiles();
 
-        // Optional: Remove API Key table extensions
-        // Note: This will delete the can_update_tickets column and all permission data!
-        // Uncomment if you want to clean up completely on uninstall
-        // $this->removeApiKeyTableExtensions();
+        // Remove API Key table extensions (database columns)
+        // This will delete all permission data!
+        $this->removeApiKeyTableExtensions();
+
+        error_log('[API Endpoints] Uninstall cleanup complete');
 
         return parent::uninstall($errors);
     }
