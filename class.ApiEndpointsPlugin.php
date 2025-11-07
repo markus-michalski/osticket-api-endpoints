@@ -37,6 +37,17 @@ class ApiEndpointsPlugin extends Plugin {
     static $cached_config = null;
 
     /**
+     * Constructor - logs immediately when class is instantiated
+     */
+    function __construct() {
+        // CRITICAL DEBUG: Log when class is instantiated (happens BEFORE any method calls)
+        file_put_contents('/tmp/api-endpoints-class-loaded.log',
+            date('Y-m-d H:i:s') . ' - ApiEndpointsPlugin class instantiated!' . PHP_EOL,
+            FILE_APPEND);
+        parent::__construct();
+    }
+
+    /**
      * Only one instance of this plugin makes sense
      */
     function isSingleton() {
