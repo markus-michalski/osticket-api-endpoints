@@ -108,13 +108,13 @@ class ApiEndpointsConfig extends PluginConfig {
                 'id' => 'installed_version',
                 'label' => $__('Installed Version'),
                 'configuration' => array(
-                    'desc' => $__('Currently installed version (automatically updated)'),
+                    'desc' => $__('⚠ Auto-managed by plugin - do not edit manually'),
                     'size' => 10,
-                    'length' => 10
+                    'length' => 10,
+                    'classes' => 'readonly-hint'
                 ),
                 'default' => '',
-                'required' => false,
-                'disabled' => true // Read-only field
+                'required' => false
             ))
         );
     }
@@ -294,9 +294,6 @@ class ApiEndpointsConfig extends PluginConfig {
         $hasDeleteColumn = self::columnExistsStatic('can_delete_tickets');
         $hasStatsColumn = self::columnExistsStatic('can_read_stats');
         $hasSubticketColumn = self::columnExistsStatic('can_manage_subtickets');
-
-        // DEBUG: Log column check results
-        error_log('DEBUG ApiEndpointsPlugin: hasSubticketColumn = ' . ($hasSubticketColumn ? 'TRUE' : 'FALSE'));
 
         // Query all API keys (conditionally include columns)
         $columns = 'id, ipaddr, apikey, isactive, can_create_tickets';
