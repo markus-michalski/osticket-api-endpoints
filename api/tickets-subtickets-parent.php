@@ -51,6 +51,12 @@ if (file_exists($plugin_path.'controllers/SubticketApiController.php')) {
     exit;
 }
 
+// Load SubticketPlugin class (required by SubticketApiController)
+$subticket_plugin_path = INCLUDE_DIR.'plugins/subticket-manager/';
+if (file_exists($subticket_plugin_path.'class.SubticketPlugin.php')) {
+    require_once($subticket_plugin_path.'class.SubticketPlugin.php');
+}
+
 // Parse path info to get child ticket number
 // URL: /api/tickets-subtickets-parent.php/680284.json -> path_info = /680284.json
 $path_info = Osticket::get_path_info();
