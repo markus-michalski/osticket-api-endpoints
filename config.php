@@ -43,68 +43,44 @@ class ApiEndpointsConfig extends PluginConfig {
                 'id' => 'enabled',
                 'label' => $__('Enable API Endpoints'),
                 'configuration' => array(
-                    'desc' => $__('When enabled, extended API endpoints will be available. Individual endpoints can be toggled below.')
+                    'desc' => $__('When enabled, extended API endpoints will be available. Access control is managed via API Key Permissions below.')
                 ),
                 'default' => true
             )),
 
-            // Section: API Endpoints
+            // Section: Available API Endpoints (Info only)
             'section_endpoints' => new SectionBreakField(array(
-                'label' => $__('API Endpoints'),
+                'label' => $__('Available API Endpoints'),
             )),
 
-            'endpoint_create_ticket' => new BooleanField(array(
-                'id' => 'endpoint_create_ticket',
-                'label' => $__('Enable POST /tickets'),
+            'endpoints_info' => new FreeTextField(array(
+                'id' => 'endpoints_info',
+                'label' => '',
                 'configuration' => array(
-                    'desc' => $__('Create tickets with extended parameters like format (markdown/html/text) and department')
-                ),
-                'default' => true
-            )),
-
-            'endpoint_update_ticket' => new BooleanField(array(
-                'id' => 'endpoint_update_ticket',
-                'label' => $__('Enable PATCH/PUT /tickets/:id'),
-                'configuration' => array(
-                    'desc' => $__('Update tickets: departmentId, topicId, parentTicketNumber, priorityId, statusId, slaId, staffId')
-                ),
-                'default' => true
-            )),
-
-            'endpoint_get_ticket' => new BooleanField(array(
-                'id' => 'endpoint_get_ticket',
-                'label' => $__('Enable GET /api/tickets-get.php/{number}.json'),
-                'configuration' => array(
-                    'desc' => $__('Retrieve ticket by number with full details and thread')
-                ),
-                'default' => true
-            )),
-
-            'endpoint_search_tickets' => new BooleanField(array(
-                'id' => 'endpoint_search_tickets',
-                'label' => $__('Enable GET /api/tickets-search.php?query=...'),
-                'configuration' => array(
-                    'desc' => $__('Search tickets by query, status, department with pagination')
-                ),
-                'default' => true
-            )),
-
-            'endpoint_delete_ticket' => new BooleanField(array(
-                'id' => 'endpoint_delete_ticket',
-                'label' => $__('Enable DELETE /api/tickets-delete.php/:number'),
-                'configuration' => array(
-                    'desc' => $__('Delete tickets with cascading cleanup (thread entries, custom data, parent references)')
-                ),
-                'default' => false // Disabled by default for safety
-            )),
-
-            'endpoint_ticket_stats' => new BooleanField(array(
-                'id' => 'endpoint_ticket_stats',
-                'label' => $__('Enable GET /api/tickets-stats.php'),
-                'configuration' => array(
-                    'desc' => $__('Retrieve ticket statistics (global, by department, by staff) for dashboards and reporting')
-                ),
-                'default' => true
+                    'html' => true,
+                    'content' => '<div style="background: #f5f5f5; padding: 15px; border-left: 4px solid #2196F3; margin: 10px 0;">
+                        <p style="margin: 0 0 10px 0;"><strong>The following API endpoints are available:</strong></p>
+                        <ul style="margin: 5px 0; padding-left: 20px; list-style: none;">
+                            <li style="margin: 5px 0;">✓ <strong>POST /tickets</strong> - Create tickets with format (markdown/html/text) and department<br>
+                               <span style="color: #666; font-size: 11px;">Controlled by: <code>can_create_tickets</code> permission</span></li>
+                            <li style="margin: 5px 0;">✓ <strong>PATCH/PUT /tickets/:id</strong> - Update tickets (department, topic, parent, priority, status, SLA, staff)<br>
+                               <span style="color: #666; font-size: 11px;">Controlled by: <code>can_update_tickets</code> permission</span></li>
+                            <li style="margin: 5px 0;">✓ <strong>GET /tickets-get.php/:number</strong> - Retrieve ticket by number with full details and thread<br>
+                               <span style="color: #666; font-size: 11px;">Controlled by: <code>can_read_tickets</code> permission</span></li>
+                            <li style="margin: 5px 0;">✓ <strong>GET /tickets-search.php</strong> - Search tickets by query, status, department with pagination<br>
+                               <span style="color: #666; font-size: 11px;">Controlled by: <code>can_search_tickets</code> permission</span></li>
+                            <li style="margin: 5px 0;">✓ <strong>DELETE /tickets-delete.php/:number</strong> - Delete tickets with cascading cleanup<br>
+                               <span style="color: #666; font-size: 11px;">Controlled by: <code>can_delete_tickets</code> permission</span></li>
+                            <li style="margin: 5px 0;">✓ <strong>GET /tickets-stats.php</strong> - Retrieve ticket statistics for dashboards and reporting<br>
+                               <span style="color: #666; font-size: 11px;">Controlled by: <code>can_read_stats</code> permission</span></li>
+                            <li style="margin: 5px 0;">✓ <strong>Subticket Operations</strong> - Manage parent-child ticket relationships (get parent, list children, create/unlink)<br>
+                               <span style="color: #666; font-size: 11px;">Controlled by: <code>can_manage_subtickets</code> permission (requires Subticket Manager Plugin)</span></li>
+                        </ul>
+                        <p style="margin: 10px 0 0 0; font-size: 12px; color: #666;">
+                            <strong>Note:</strong> Access to these endpoints is controlled individually per API Key using the permissions below.
+                        </p>
+                    </div>'
+                )
             )),
 
             // Section: API Key Permissions
