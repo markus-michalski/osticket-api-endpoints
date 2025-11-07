@@ -132,23 +132,23 @@ class SubticketApiController extends ExtendedTicketApiController {
     /**
      * Get parent ticket of a subticket
      *
-     * @param int $childId Child ticket ID
+     * @param string $childNumber Child ticket number
      * @return array Parent ticket data or null
-     * @throws Exception 400 - Invalid ticket ID (ID must be > 0)
+     * @throws Exception 400 - Invalid ticket number
      * @throws Exception 403 - API key not authorized for subticket management
      * @throws Exception 404 - Child ticket not found
      */
-    public function getParent(int $childId): array {
-        // 1. Validate ticket ID
-        if ($childId <= 0) {
-            throw new Exception('Invalid ticket ID', 400);
+    public function getParent(string $childNumber): array {
+        // 1. Validate ticket number
+        if (empty($childNumber)) {
+            throw new Exception('Invalid ticket number', 400);
         }
 
         // 2. Permission check
         $this->requireSubticketPermission();
 
-        // 3. Child ticket lookup
-        $childTicket = Ticket::lookup($childId);
+        // 3. Child ticket lookup by number
+        $childTicket = Ticket::lookupByNumber($childNumber);
         if (!$childTicket) {
             throw new Exception('Ticket not found', 404);
         }
@@ -179,23 +179,23 @@ class SubticketApiController extends ExtendedTicketApiController {
     /**
      * Get list of child tickets for a parent ticket
      *
-     * @param int $parentId Parent ticket ID
+     * @param string $parentNumber Parent ticket number
      * @return array Array of child tickets
-     * @throws Exception 400 - Invalid ticket ID (ID must be > 0)
+     * @throws Exception 400 - Invalid ticket number
      * @throws Exception 403 - API key not authorized for subticket management
      * @throws Exception 404 - Parent ticket not found
      */
-    public function getList(int $parentId): array {
-        // 1. Validate ticket ID
-        if ($parentId <= 0) {
-            throw new Exception('Invalid ticket ID', 400);
+    public function getList(string $parentNumber): array {
+        // 1. Validate ticket number
+        if (empty($parentNumber)) {
+            throw new Exception('Invalid ticket number', 400);
         }
 
         // 2. Permission check
         $this->requireSubticketPermission();
 
-        // 3. Parent ticket lookup
-        $parentTicket = Ticket::lookup($parentId);
+        // 3. Parent ticket lookup by number
+        $parentTicket = Ticket::lookupByNumber($parentNumber);
         if (!$parentTicket) {
             throw new Exception('Ticket not found', 404);
         }
@@ -229,41 +229,41 @@ class SubticketApiController extends ExtendedTicketApiController {
     /**
      * Create a subticket link between parent and child tickets
      *
-     * @param int $parentId Parent ticket ID
-     * @param int $childId Child ticket ID
+     * @param string $parentNumber Parent ticket number
+     * @param string $childNumber Child ticket number
      * @return array Success response with parent and child data
-     * @throws Exception 400 - Invalid ticket IDs or self-link attempt
+     * @throws Exception 400 - Invalid ticket numbers or self-link attempt
      * @throws Exception 403 - API key not authorized (permission or department access)
      * @throws Exception 404 - Parent or child ticket not found
      * @throws Exception 409 - Child already has a parent
      */
-    public function createLink(int $parentId, int $childId): array {
-        // 1. Validate parent ticket ID
-        if ($parentId <= 0) {
-            throw new Exception('Invalid parent ticket ID', 400);
+    public function createLink(string $parentNumber, string $childNumber): array {
+        // 1. Validate parent ticket number
+        if (empty($parentNumber)) {
+            throw new Exception('Invalid parent ticket number', 400);
         }
 
-        // 2. Validate child ticket ID
-        if ($childId <= 0) {
-            throw new Exception('Invalid child ticket ID', 400);
+        // 2. Validate child ticket number
+        if (empty($childNumber)) {
+            throw new Exception('Invalid child ticket number', 400);
         }
 
         // 3. Check for self-link
-        if ($parentId === $childId) {
+        if ($parentNumber === $childNumber) {
             throw new Exception('Cannot link ticket to itself', 400);
         }
 
         // 4. Permission check
         $this->requireSubticketPermission();
 
-        // 5. Parent ticket lookup
-        $parentTicket = Ticket::lookup($parentId);
+        // 5. Parent ticket lookup by number
+        $parentTicket = Ticket::lookupByNumber($parentNumber);
         if (!$parentTicket) {
             throw new Exception('Parent ticket not found', 404);
         }
 
-        // 6. Child ticket lookup
-        $childTicket = Ticket::lookup($childId);
+        // 6. Child ticket lookup by number
+        $childTicket = Ticket::lookupByNumber($childNumber);
         if (!$childTicket) {
             throw new Exception('Child ticket not found', 404);
         }
@@ -285,7 +285,7 @@ class SubticketApiController extends ExtendedTicketApiController {
 
         if ($existingParent) {
             // Check if it's the same parent (relationship already exists)
-            if ($existingParent->getId() === $parentId) {
+            if ($existingParent->getId() === $parentTicket->getId()) {
                 throw new Exception('Subticket relationship already exists', 409);
             }
             // Different parent exists
@@ -309,23 +309,23 @@ class SubticketApiController extends ExtendedTicketApiController {
     /**
      * Remove parent-child relationship (unlink subticket)
      *
-     * @param int $childId Child ticket ID
+     * @param string $childNumber Child ticket number
      * @return array Success response with child data
-     * @throws Exception 400 - Invalid child ticket ID (ID must be > 0)
+     * @throws Exception 400 - Invalid child ticket number
      * @throws Exception 403 - API key not authorized (permission or department access)
      * @throws Exception 404 - Child ticket not found or child has no parent
      */
-    public function unlinkChild(int $childId): array {
-        // 1. Validate child ticket ID
-        if ($childId <= 0) {
-            throw new Exception('Invalid child ticket ID', 400);
+    public function unlinkChild(string $childNumber): array {
+        // 1. Validate child ticket number
+        if (empty($childNumber)) {
+            throw new Exception('Invalid child ticket number', 400);
         }
 
         // 2. Permission check
         $this->requireSubticketPermission();
 
-        // 3. Child ticket lookup
-        $childTicket = Ticket::lookup($childId);
+        // 3. Child ticket lookup by number
+        $childTicket = Ticket::lookupByNumber($childNumber);
         if (!$childTicket) {
             throw new Exception('Child ticket not found', 404);
         }

@@ -5,16 +5,11 @@
  * Provides DELETE endpoint for removing parent-child relationships between tickets
  *
  * This file should be deployed to: /api/tickets-subtickets-unlink.php
- * URL: /api/tickets-subtickets-unlink.php
+ * URL pattern: /api/tickets-subtickets-unlink.php/{child_ticket_number}.json
  *
  * Requirements:
  * - API key with can_manage_subtickets permission
  * - Subticket Manager Plugin installed and active
- *
- * POST/DELETE Body (JSON):
- * {
- *   "child_id": 200
- * }
  *
  * Response Format (Success):
  * {
@@ -22,17 +17,16 @@
  *   "message": "Subticket relationship removed successfully",
  *   "child": {
  *     "ticket_id": 200,
- *     "number": "ABC200",
+ *     "number": "680285",
  *     "subject": "Child Ticket",
  *     "status": "Open"
  *   }
  * }
  *
  * Error Codes:
- * - 400: Invalid child ticket ID
+ * - 400: Invalid child ticket number
  * - 403: API key not authorized (permission or department access)
  * - 404: Child ticket not found or child has no parent
- * - 501: Subticket plugin not available
  */
 
 // Require API bootstrap
@@ -53,31 +47,33 @@ if (file_exists($plugin_path.'controllers/SubticketApiController.php')) {
     exit;
 }
 
-// Only accept DELETE or POST method
+// Parse path info to get child ticket number
+// URL: /api/tickets-subtickets-unlink.php/680285.json -> path_info = /680285.json
+$path_info = Osticket::get_path_info();
+
+// Extract ticket number and format
+// Pattern: /{ticket_number}.{format}
+if (!preg_match('#^/(?P<number>[^/.]+)\.(?P<format>json|xml)$#', $path_info, $matches)) {
+    Http::response(400, 'Invalid URL format. Expected: /api/tickets-subtickets-unlink.php/{child_ticket_number}.json', 'text/plain');
+    exit;
+}
+
+$childNumber = $matches['number'];
+$format = $matches['format'];
+
+// Only accept DELETE method
 $method = $_SERVER['REQUEST_METHOD'];
-if ($method !== 'DELETE' && $method !== 'POST') {
-    Http::response(405, 'Method Not Allowed. Use DELETE or POST', 'text/plain');
+if ($method !== 'DELETE') {
+    Http::response(405, 'Method Not Allowed. Use DELETE', 'text/plain');
     exit;
 }
-
-// Parse JSON body
-$input = file_get_contents('php://input');
-$data = json_decode($input, true);
-
-if (json_last_error() !== JSON_ERROR_NONE) {
-    Http::response(400, 'Invalid JSON in request body', 'text/plain');
-    exit;
-}
-
-// Extract child_id
-$childId = isset($data['child_id']) ? (int)$data['child_id'] : 0;
 
 // Create controller and unlink subticket
 try {
     $controller = new SubticketApiController(null);
-    $result = $controller->unlinkChild($childId);
+    $result = $controller->unlinkChild($childNumber);
 
-    // Return success
+    // Return success (format is always JSON for DELETE)
     Http::response(200, json_encode($result, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE), 'application/json');
 
 } catch (Exception $e) {

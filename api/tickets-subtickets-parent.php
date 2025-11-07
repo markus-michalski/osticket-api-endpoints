@@ -5,7 +5,7 @@
  * Provides GET endpoint for retrieving parent ticket of a subticket
  *
  * This file should be deployed to: /api/tickets-subtickets-parent.php
- * URL pattern: /api/tickets-subtickets-parent.php/{child_ticket_id}.json
+ * URL pattern: /api/tickets-subtickets-parent.php/{child_ticket_number}.json
  *
  * Requirements:
  * - API key with can_manage_subtickets permission
@@ -27,10 +27,9 @@
  * }
  *
  * Error Codes:
- * - 400: Invalid ticket ID
+ * - 400: Invalid ticket number
  * - 403: API key not authorized for subticket operations
  * - 404: Ticket not found
- * - 501: Subticket plugin not available
  */
 
 // Require API bootstrap
@@ -52,18 +51,18 @@ if (file_exists($plugin_path.'controllers/SubticketApiController.php')) {
     exit;
 }
 
-// Parse path info to get child ticket ID
-// URL: /api/tickets-subtickets-parent.php/200.json -> path_info = /200.json
+// Parse path info to get child ticket number
+// URL: /api/tickets-subtickets-parent.php/680284.json -> path_info = /680284.json
 $path_info = Osticket::get_path_info();
 
-// Extract ticket ID and format
-// Pattern: /{ticket_id}.{format}
-if (!preg_match('#^/(?P<id>\d+)\.(?P<format>json|xml)$#', $path_info, $matches)) {
-    Http::response(400, 'Invalid URL format. Expected: /api/tickets-subtickets-parent.php/{child_ticket_id}.json', 'text/plain');
+// Extract ticket number and format
+// Pattern: /{ticket_number}.{format}
+if (!preg_match('#^/(?P<number>[^/.]+)\.(?P<format>json|xml)$#', $path_info, $matches)) {
+    Http::response(400, 'Invalid URL format. Expected: /api/tickets-subtickets-parent.php/{child_ticket_number}.json', 'text/plain');
     exit;
 }
 
-$childId = (int)$matches['id'];
+$childNumber = $matches['number'];
 $format = $matches['format'];
 
 // Only accept GET method
@@ -76,7 +75,7 @@ if ($method !== 'GET') {
 // Create controller and get parent ticket
 try {
     $controller = new SubticketApiController(null);
-    $result = $controller->getParent($childId);
+    $result = $controller->getParent($childNumber);
 
     // Return success with parent data
     if ($format === 'json') {

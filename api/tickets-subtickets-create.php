@@ -5,7 +5,7 @@
  * Provides POST endpoint for creating parent-child relationships between tickets
  *
  * This file should be deployed to: /api/tickets-subtickets-create.php
- * URL: /api/tickets-subtickets-create.php
+ * URL pattern: /api/tickets-subtickets-create.php/{parent_ticket_number}.json
  *
  * Requirements:
  * - API key with can_manage_subtickets permission
@@ -13,8 +13,7 @@
  *
  * POST Body (JSON):
  * {
- *   "parent_id": 100,
- *   "child_id": 200
+ *   "childId": "680285"
  * }
  *
  * Response Format (Success):
@@ -23,24 +22,23 @@
  *   "message": "Subticket relationship created successfully",
  *   "parent": {
  *     "ticket_id": 100,
- *     "number": "ABC100",
+ *     "number": "680284",
  *     "subject": "Parent Ticket",
  *     "status": "Open"
  *   },
  *   "child": {
- *     "ticket_id": 200,
- *     "number": "ABC200",
+ *     "ticket_id": 101,
+ *     "number": "680285",
  *     "subject": "Child Ticket",
  *     "status": "Open"
  *   }
  * }
  *
  * Error Codes:
- * - 400: Invalid ticket IDs or self-link attempt
+ * - 400: Invalid ticket numbers or self-link attempt
  * - 403: API key not authorized (permission or department access)
  * - 404: Parent or child ticket not found
  * - 409: Child already has a parent
- * - 501: Subticket plugin not available
  */
 
 // Require API bootstrap
@@ -61,6 +59,20 @@ if (file_exists($plugin_path.'controllers/SubticketApiController.php')) {
     exit;
 }
 
+// Parse path info to get parent ticket number
+// URL: /api/tickets-subtickets-create.php/680284.json -> path_info = /680284.json
+$path_info = Osticket::get_path_info();
+
+// Extract ticket number and format
+// Pattern: /{ticket_number}.{format}
+if (!preg_match('#^/(?P<number>[^/.]+)\.(?P<format>json|xml)$#', $path_info, $matches)) {
+    Http::response(400, 'Invalid URL format. Expected: /api/tickets-subtickets-create.php/{parent_ticket_number}.json', 'text/plain');
+    exit;
+}
+
+$parentNumber = $matches['number'];
+$format = $matches['format'];
+
 // Only accept POST method
 $method = $_SERVER['REQUEST_METHOD'];
 if ($method !== 'POST') {
@@ -77,16 +89,20 @@ if (json_last_error() !== JSON_ERROR_NONE) {
     exit;
 }
 
-// Extract parent_id and child_id
-$parentId = isset($data['parent_id']) ? (int)$data['parent_id'] : 0;
-$childId = isset($data['child_id']) ? (int)$data['child_id'] : 0;
+// Extract child ticket number from POST body
+$childNumber = isset($data['childId']) ? (string)$data['childId'] : '';
+
+if (empty($childNumber)) {
+    Http::response(400, 'Missing childId in request body', 'text/plain');
+    exit;
+}
 
 // Create controller and create subticket link
 try {
     $controller = new SubticketApiController(null);
-    $result = $controller->createLink($parentId, $childId);
+    $result = $controller->createLink($parentNumber, $childNumber);
 
-    // Return success
+    // Return success (format is always JSON for POST)
     Http::response(200, json_encode($result, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE), 'application/json');
 
 } catch (Exception $e) {

@@ -5,7 +5,7 @@
  * Provides GET endpoint for retrieving all child tickets (subtickets) of a parent ticket
  *
  * This file should be deployed to: /api/tickets-subtickets-list.php
- * URL pattern: /api/tickets-subtickets-list.php/{parent_ticket_id}.json
+ * URL pattern: /api/tickets-subtickets-list.php/{parent_ticket_number}.json
  *
  * Requirements:
  * - API key with can_manage_subtickets permission
@@ -35,10 +35,9 @@
  * }
  *
  * Error Codes:
- * - 400: Invalid ticket ID
+ * - 400: Invalid ticket number
  * - 403: API key not authorized for subticket operations
  * - 404: Parent ticket not found
- * - 501: Subticket plugin not available
  */
 
 // Require API bootstrap
@@ -60,18 +59,18 @@ if (file_exists($plugin_path.'controllers/SubticketApiController.php')) {
     exit;
 }
 
-// Parse path info to get parent ticket ID
-// URL: /api/tickets-subtickets-list.php/100.json -> path_info = /100.json
+// Parse path info to get parent ticket number
+// URL: /api/tickets-subtickets-list.php/680284.json -> path_info = /680284.json
 $path_info = Osticket::get_path_info();
 
-// Extract ticket ID and format
-// Pattern: /{ticket_id}.{format}
-if (!preg_match('#^/(?P<id>\d+)\.(?P<format>json|xml)$#', $path_info, $matches)) {
-    Http::response(400, 'Invalid URL format. Expected: /api/tickets-subtickets-list.php/{parent_ticket_id}.json', 'text/plain');
+// Extract ticket number and format
+// Pattern: /{ticket_number}.{format}
+if (!preg_match('#^/(?P<number>[^/.]+)\.(?P<format>json|xml)$#', $path_info, $matches)) {
+    Http::response(400, 'Invalid URL format. Expected: /api/tickets-subtickets-list.php/{parent_ticket_number}.json', 'text/plain');
     exit;
 }
 
-$parentId = (int)$matches['id'];
+$parentNumber = $matches['number'];
 $format = $matches['format'];
 
 // Only accept GET method
@@ -84,7 +83,7 @@ if ($method !== 'GET') {
 // Create controller and get children list
 try {
     $controller = new SubticketApiController(null);
-    $result = $controller->getList($parentId);
+    $result = $controller->getList($parentNumber);
 
     // Return success with children data
     if ($format === 'json') {

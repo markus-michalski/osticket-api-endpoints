@@ -1096,18 +1096,11 @@ curl -X GET "https://stage.tickets.markus-michalski.net/api/tickets-search.php?q
 
 [0;32m[TEST][0m 2.5 Search Tickets (XML format)
 [1;33mCommand:[0m
-curl -X GET "https://stage.tickets.markus-michalski.net/api/tickets-search.php.xml?query=test&limit=5"   -H "X-API-Key: CE206076F0B32E58AB3EBBF8CBD2DD29"   -s
+curl -X GET "https://stage.tickets.markus-michalski.net/api/tickets-search.php/.xml?query=test&limit=5"   -H "X-API-Key: CE206076F0B32E58AB3EBBF8CBD2DD29"   -s
 
 [1;33mResponse:[0m
-<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
-<html><head>
-<title>404 Not Found</title>
-</head><body>
-<h1>Not Found</h1>
-<p>The requested URL was not found on this server.</p>
-<hr>
-<address>Apache/2.4.65 (Debian) Server at stage.tickets.markus-michalski.net Port 443</address>
-</body></html>
+<?xml version="1.0"?>
+<result><tickets><item><id>63</id><number>432791</number><subject>Test Ticket</subject><statusId>1</statusId><status>Offen</status><priorityId>2</priorityId><priority>Normal</priority><departmentId>1</departmentId><department>Support</department><topicId/><topic/><created>2025-11-07 14:17:43</created><updated>2025-11-07 14:17:43</updated><dueDate/><staffId/><staff/><teamId/><team/><slaId>1</slaId><sla>Standard-SLA</sla><isOverdue>0</isOverdue><isAnswered>0</isAnswered></item><item><id>61</id><number>698266</number><subject>TEST Child</subject><statusId>1</statusId><status>Offen</status><priorityId>1</priorityId><priority>Niedrig</priority><departmentId>1</departmentId><department>Support</department><topicId>2</topicId><topic>Feedback</topic><created>2025-11-03 14:38:31</created><updated>2025-11-03 14:38:31</updated><dueDate>2025-12-31 14:37:00</dueDate><staffId>1</staffId><staff>Markus Michalski</staff><teamId/><team/><slaId>1</slaId><sla>Standard-SLA</sla><isOverdue>0</isOverdue><isAnswered>0</isAnswered></item><item><id>36</id><number>240077</number><subject>Update-Test: PATCH-Endpoint</subject><statusId>3</statusId><status>Geschlossen</status><priorityId>2</priorityId><priority>Normal</priority><departmentId>2</departmentId><department>Development</department><topicId>1</topicId><topic>Feature</topic><created>2025-10-25 12:06:29</created><updated>2025-10-25 12:06:38</updated><dueDate/><staffId>1</staffId><staff>Markus Michalski</staff><teamId/><team/><slaId>1</slaId><sla>Standard-SLA</sla><isOverdue>0</isOverdue><isAnswered>0</isAnswered></item><item><id>33</id><number>219489</number><subject>Update-Test nach Priority-Fix</subject><statusId>3</statusId><status>Geschlossen</status><priorityId>2</priorityId><priority>Normal</priority><departmentId>2</departmentId><department>Development</department><topicId>1</topicId><topic>Feature</topic><created>2025-10-24 18:50:54</created><updated>2025-10-24 18:51:30</updated><dueDate/><staffId>1</staffId><staff>Markus Michalski</staff><teamId/><team/><slaId>1</slaId><sla>Standard-SLA</sla><isOverdue>0</isOverdue><isAnswered>0</isAnswered></item></tickets></result>
 
 
 
@@ -1138,8 +1131,8 @@ HTTP Status: 200
 curl -X PATCH "https://stage.tickets.markus-michalski.net/api/tickets-update.php/237948.json"   -H "X-API-Key: CE206076F0B32E58AB3EBBF8CBD2DD29"   -H "Content-Type: application/json"   -d '{"topicId": 2}'   -s -w "\nHTTP Status: %{http_code}\n"
 
 [1;33mResponse:[0m
-
-HTTP Status: 500
+237948
+HTTP Status: 200
 
 
 [0;32m[TEST][0m 3.4 Update Multiple Properties Simultaneously
@@ -1176,25 +1169,86 @@ HTTP Status: 405
 
 [0;32m[TEST][0m 4.1 Get Ticket Statistics (JSON)
 [1;33mCommand:[0m
-curl -X GET "https://stage.tickets.markus-michalski.net/api/tickets-stats.php.json"   -H "X-API-Key: CE206076F0B32E58AB3EBBF8CBD2DD29"   -s | jq .
+curl -X GET "https://stage.tickets.markus-michalski.net/api/tickets-stats.php/.json"   -H "X-API-Key: CE206076F0B32E58AB3EBBF8CBD2DD29"   -s | jq .
 
 [1;33mResponse:[0m
+{
+  "total": 42,
+  "open": 30,
+  "closed": 12,
+  "overdue": 24,
+  "by_department": {
+    "Claude Code": {
+      "total": 1,
+      "open": 0,
+      "closed": 1,
+      "overdue": 0
+    },
+    "Development": {
+      "total": 4,
+      "open": 0,
+      "closed": 4,
+      "overdue": 0
+    },
+    "Support": {
+      "total": 25,
+      "open": 25,
+      "closed": 0,
+      "overdue": 23
+    },
+    "osTicket": {
+      "total": 12,
+      "open": 5,
+      "closed": 7,
+      "overdue": 1
+    }
+  },
+  "by_staff": [
+    {
+      "staff_id": 1,
+      "staff_name": {
+        "format": "full",
+        "parts": {
+          "first": "Markus",
+          "last": "Michalski"
+        },
+        "name": "Markus Michalski"
+      },
+      "total": 41,
+      "departments": {
+        "osTicket": {
+          "open": 5,
+          "closed": 7,
+          "overdue": 1
+        },
+        "Support": {
+          "open": 24,
+          "closed": 0,
+          "overdue": 23
+        },
+        "Claude Code": {
+          "open": 0,
+          "closed": 1,
+          "overdue": 0
+        },
+        "Development": {
+          "open": 0,
+          "closed": 4,
+          "overdue": 0
+        }
+      }
+    }
+  ]
+}
 
 
 [0;32m[TEST][0m 4.2 Get Ticket Statistics (XML)
 [1;33mCommand:[0m
-curl -X GET "https://stage.tickets.markus-michalski.net/api/tickets-stats.php.xml"   -H "X-API-Key: CE206076F0B32E58AB3EBBF8CBD2DD29"   -s
+curl -X GET "https://stage.tickets.markus-michalski.net/api/tickets-stats.php/.xml"   -H "X-API-Key: CE206076F0B32E58AB3EBBF8CBD2DD29"   -s
 
 [1;33mResponse:[0m
-<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
-<html><head>
-<title>404 Not Found</title>
-</head><body>
-<h1>Not Found</h1>
-<p>The requested URL was not found on this server.</p>
-<hr>
-<address>Apache/2.4.65 (Debian) Server at stage.tickets.markus-michalski.net Port 443</address>
-</body></html>
+<?xml version="1.0"?>
+<stats><total>42</total><open>30</open><closed>12</closed><overdue>24</overdue><by_department><Claude Code><total>1</total><open>0</open><closed>1</closed><overdue>0</overdue></Claude Code><Development><total>4</total><open>0</open><closed>4</closed><overdue>0</overdue></Development><Support><total>25</total><open>25</open><closed>0</closed><overdue>23</overdue></Support><osTicket><total>12</total><open>5</open><closed>7</closed><overdue>1</overdue></osTicket></by_department><by_staff><item><staff_id>1</staff_id><staff_name>Markus Michalski</staff_name><total>41</total><departments><osTicket><open>5</open><closed>7</closed><overdue>1</overdue></osTicket><Support><open>24</open><closed>0</closed><overdue>23</overdue></Support><Claude Code><open>0</open><closed>1</closed><overdue>0</overdue></Claude Code><Development><open>0</open><closed>4</closed><overdue>0</overdue></Development></departments></item></by_staff></stats>
 
 
 
@@ -1204,25 +1258,65 @@ curl -X GET "https://stage.tickets.markus-michalski.net/api/tickets-stats.php.xm
 
 [0;32m[TEST][0m 5.1 Get All Ticket Statuses (JSON)
 [1;33mCommand:[0m
-curl -X GET "https://stage.tickets.markus-michalski.net/api/tickets-statuses.php.json"   -H "X-API-Key: CE206076F0B32E58AB3EBBF8CBD2DD29"   -s | jq .
+curl -X GET "https://stage.tickets.markus-michalski.net/api/tickets-statuses.php/.json"   -H "X-API-Key: CE206076F0B32E58AB3EBBF8CBD2DD29"   -s | jq .
 
 [1;33mResponse:[0m
+[
+  {
+    "id": 1,
+    "name": "Offen",
+    "state": "open"
+  },
+  {
+    "id": 6,
+    "name": "In Bearbeitung",
+    "state": "open"
+  },
+  {
+    "id": 8,
+    "name": "Wartet auf Antwort",
+    "state": "open"
+  },
+  {
+    "id": 7,
+    "name": "Pausiert",
+    "state": "open"
+  },
+  {
+    "id": 9,
+    "name": "Testing",
+    "state": "open"
+  },
+  {
+    "id": 2,
+    "name": "Gelöst",
+    "state": "closed"
+  },
+  {
+    "id": 3,
+    "name": "Geschlossen",
+    "state": "closed"
+  },
+  {
+    "id": 4,
+    "name": "Archiviert",
+    "state": "archived"
+  },
+  {
+    "id": 5,
+    "name": "Gelöscht",
+    "state": "deleted"
+  }
+]
 
 
 [0;32m[TEST][0m 5.2 Get All Ticket Statuses (XML)
 [1;33mCommand:[0m
-curl -X GET "https://stage.tickets.markus-michalski.net/api/tickets-statuses.php.xml"   -H "X-API-Key: CE206076F0B32E58AB3EBBF8CBD2DD29"   -s
+curl -X GET "https://stage.tickets.markus-michalski.net/api/tickets-statuses.php/.xml"   -H "X-API-Key: CE206076F0B32E58AB3EBBF8CBD2DD29"   -s
 
 [1;33mResponse:[0m
-<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
-<html><head>
-<title>404 Not Found</title>
-</head><body>
-<h1>Not Found</h1>
-<p>The requested URL was not found on this server.</p>
-<hr>
-<address>Apache/2.4.65 (Debian) Server at stage.tickets.markus-michalski.net Port 443</address>
-</body></html>
+<?xml version="1.0"?>
+<result><statuses><item><id>1</id><name>Offen</name><state>open</state></item><item><id>6</id><name>In Bearbeitung</name><state>open</state></item><item><id>8</id><name>Wartet auf Antwort</name><state>open</state></item><item><id>7</id><name>Pausiert</name><state>open</state></item><item><id>9</id><name>Testing</name><state>open</state></item><item><id>2</id><name>Gel&#xF6;st</name><state>closed</state></item><item><id>3</id><name>Geschlossen</name><state>closed</state></item><item><id>4</id><name>Archiviert</name><state>archived</state></item><item><id>5</id><name>Gel&#xF6;scht</name><state>deleted</state></item></statuses></result>
 
 
 
@@ -1266,15 +1360,15 @@ curl -X GET "https://stage.tickets.markus-michalski.net/api/tickets-subtickets-p
 curl -X GET "https://stage.tickets.markus-michalski.net/api/tickets-subtickets-parent.php/237948.xml"   -H "X-API-Key: CE206076F0B32E58AB3EBBF8CBD2DD29"   -s
 
 [1;33mResponse:[0m
-
+Ticket not found
 
 [0;32m[TEST][0m 7.3 Get Parent of Ticket Without Parent (404 Error)
 [1;33mCommand:[0m
 curl -X GET "https://stage.tickets.markus-michalski.net/api/tickets-subtickets-parent.php/456846.json"   -H "X-API-Key: CE206076F0B32E58AB3EBBF8CBD2DD29"   -s -w "\nHTTP Status: %{http_code}\n"
 
 [1;33mResponse:[0m
-
-HTTP Status: 500
+Ticket not found
+HTTP Status: 404
 
 
 
@@ -1294,7 +1388,7 @@ curl -X GET "https://stage.tickets.markus-michalski.net/api/tickets-subtickets-l
 curl -X GET "https://stage.tickets.markus-michalski.net/api/tickets-subtickets-list.php/456846.xml"   -H "X-API-Key: CE206076F0B32E58AB3EBBF8CBD2DD29"   -s
 
 [1;33mResponse:[0m
-
+Ticket not found
 
 [0;32m[TEST][0m 8.3 Get Children of Ticket Without Children (Empty Array)
 [1;33mCommand:[0m
