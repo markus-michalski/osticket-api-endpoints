@@ -36,16 +36,6 @@ class ApiEndpointsPlugin extends Plugin {
     // So we cache config values statically during bootstrap
     static $cached_config = null;
 
-    /**
-     * Constructor - logs immediately when class is instantiated
-     */
-    function __construct() {
-        // CRITICAL DEBUG: Log when class is instantiated (happens BEFORE any method calls)
-        file_put_contents('/tmp/api-endpoints-class-loaded.log',
-            date('Y-m-d H:i:s') . ' - ApiEndpointsPlugin class instantiated!' . PHP_EOL,
-            FILE_APPEND);
-        parent::__construct();
-    }
 
     /**
      * Only one instance of this plugin makes sense
@@ -432,11 +422,7 @@ class ApiEndpointsPlugin extends Plugin {
      * Called when plugin is enabled in admin panel
      */
     function enable() {
-        // TEST: Can we write to /tmp at all?
-        file_put_contents('/tmp/api-endpoints-enable-test.log',
-            date('Y-m-d H:i:s') . ' - enable() WAS CALLED!' . PHP_EOL,
-            FILE_APPEND);
-
+        error_log('[API Endpoints] Plugin enable() called');
         $errors = array();
 
         // Auto-create instance for singleton plugin
@@ -452,6 +438,12 @@ class ApiEndpointsPlugin extends Plugin {
             }
         }
 
+        // IMPORTANT: Clean up any leftover files from previous installations
+        // This is necessary because osTicket does NOT call uninstall hooks when deleting plugins
+        // It only removes DB entries, leaving files behind
+        error_log('[API Endpoints] Cleaning up old installation files (if any)...');
+        $this->performCleanup();
+
         // Extend API Key table with new permissions
         $this->extendApiKeyTable($errors);
 
@@ -466,6 +458,7 @@ class ApiEndpointsPlugin extends Plugin {
             $this->getConfig()->set('installed_version', $plugin_info['version']);
         }
 
+        error_log('[API Endpoints] Plugin enabled successfully');
         return empty($errors) ? true : $errors;
     }
 
@@ -890,75 +883,26 @@ class ApiEndpointsPlugin extends Plugin {
      * for testing purposes. Files and database columns remain intact.
      */
     function disable() {
-        // CRITICAL DEBUG: Test if disable is called instead of pre_uninstall
-        file_put_contents('/tmp/api-endpoints-uninstall-test.log',
-            date('Y-m-d H:i:s') . ' - disable() WAS CALLED!' . PHP_EOL,
-            FILE_APPEND);
-        error_log('[API Endpoints] disable() called');
-
         // Do nothing - plugin can be re-enabled without losing configuration
         return true;
     }
 
     /**
-     * Called BEFORE plugin is uninstalled (deleted)
+     * Perform cleanup operations
      *
-     * This is the correct hook for cleanup operations.
-     * After this returns true, parent::uninstall() deletes the plugin.
+     * Called from enable() to clean up leftover files from previous installations.
      *
-     * This performs complete cleanup:
-     * - Removes all deployed API files from /api/
-     * - Removes .htaccess rewrite rules
-     * - Removes database columns from api_key table
-     *
-     * @param array $errors Error messages array (by reference)
-     * @return bool True to proceed with uninstall, false to abort
-     */
-    function pre_uninstall(&$errors) {
-        // CRITICAL DEBUG: Test if this method is even called
-        file_put_contents('/tmp/api-endpoints-uninstall-test.log',
-            date('Y-m-d H:i:s') . ' - pre_uninstall() WAS CALLED!' . PHP_EOL,
-            FILE_APPEND);
-        error_log('[API Endpoints] Starting pre_uninstall cleanup...');
-
-        $this->performCleanup();
-
-        // Return true to allow parent::uninstall() to proceed with deletion
-        return true;
-    }
-
-    /**
-     * Override uninstall to add cleanup (alternative approach)
-     *
-     * Try both pre_uninstall() and uninstall() to see which one works
-     */
-    function uninstall(&$errors) {
-        // CRITICAL DEBUG: Test if this method is called
-        file_put_contents('/tmp/api-endpoints-uninstall-test.log',
-            date('Y-m-d H:i:s') . ' - uninstall() WAS CALLED!' . PHP_EOL,
-            FILE_APPEND);
-        error_log('[API Endpoints] Starting uninstall cleanup...');
-
-        $this->performCleanup();
-
-        // Call parent to finish uninstall
-        return parent::uninstall($errors);
-    }
-
-    /**
-     * Perform cleanup operations (called from both pre_uninstall and uninstall)
+     * NOTE: osTicket does NOT call uninstall/disable hooks when deleting plugins!
+     * It only removes database entries, leaving files behind. Therefore we clean up
+     * old files during enable() before deploying new ones.
      */
     private function performCleanup() {
-        // Remove deployed API files and .htaccess rules
+        // Remove deployed API files and .htaccess rules (if any exist)
         if (!$this->removeApiFiles()) {
             error_log('[API Endpoints] WARNING: File removal had errors (check permissions)');
         }
 
-        // Remove API Key table extensions (database columns)
-        if (!$this->removeApiKeyTableExtensions()) {
-            error_log('[API Endpoints] WARNING: Database cleanup had errors');
-        }
-
-        error_log('[API Endpoints] Cleanup complete');
+        // Do NOT remove database columns here - they should persist across reinstalls
+        // Database columns are only removed if user manually uninstalls AND cleans up
     }
 }
