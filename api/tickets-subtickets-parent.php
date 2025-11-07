@@ -42,10 +42,11 @@ if (!defined('INCLUDE_DIR'))
 require_once(INCLUDE_DIR.'class.api.php');
 require_once(INCLUDE_DIR.'class.ticket.php');
 
-// Load SubticketApiController
+// Load SubticketApiController and XmlHelper
 $plugin_path = INCLUDE_DIR.'plugins/api-endpoints/';
 if (file_exists($plugin_path.'controllers/SubticketApiController.php')) {
     require_once($plugin_path.'controllers/SubticketApiController.php');
+    require_once($plugin_path.'lib/XmlHelper.php');
 } else {
     Http::response(500, 'API Endpoints Plugin not properly installed', 'text/plain');
     exit;
@@ -79,43 +80,19 @@ try {
 
     // Return success with parent data
     if ($format === 'json') {
-        Http::response(200, json_encode($result), 'application/json');
+        $json = json_encode($result, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+        Http::response(200, $json, 'application/json');
     } else {
         // XML format
-        $xml = arrayToXml($result, 'response');
+        $xml = XmlHelper::arrayToXml($result, 'response');
         Http::response(200, $xml, 'application/xml');
     }
 
 } catch (Exception $e) {
-    // Handle errors
-    $code = $e->getCode() ?: 400;
-    Http::response($code, $e->getMessage(), 'text/plain');
-}
-
-/**
- * Convert array to XML
- */
-function arrayToXml($data, $rootElement = 'root') {
-    $xml = new SimpleXMLElement("<$rootElement/>");
-    arrayToXmlRecursive($data, $xml);
-    return $xml->asXML();
-}
-
-/**
- * Recursive helper for array to XML conversion
- */
-function arrayToXmlRecursive($data, &$xml) {
-    foreach ($data as $key => $value) {
-        if (is_array($value)) {
-            if (is_numeric($key)) {
-                $key = 'item';
-            }
-            $subnode = $xml->addChild($key);
-            arrayToXmlRecursive($value, $subnode);
-        } else {
-            // Secure XML encoding to prevent injection attacks
-            $safeValue = htmlspecialchars($value, ENT_XML1 | ENT_QUOTES, 'UTF-8');
-            $xml->addChild($key, $safeValue);
-        }
+    // Handle errors - validate HTTP status code
+    $code = $e->getCode();
+    if ($code < 100 || $code > 599) {
+        $code = 400; // Fallback to Bad Request for invalid codes
     }
+    Http::response($code, $e->getMessage(), 'text/plain');
 }

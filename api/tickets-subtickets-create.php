@@ -87,10 +87,13 @@ try {
     $result = $controller->createLink($parentId, $childId);
 
     // Return success
-    Http::response(200, json_encode($result), 'application/json');
+    Http::response(200, json_encode($result, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE), 'application/json');
 
 } catch (Exception $e) {
     // Handle errors
-    $code = $e->getCode() ?: 400;
+    $code = $e->getCode();
+    if ($code < 100 || $code > 599) {
+        $code = 400; // Fallback to Bad Request for invalid codes
+    }
     Http::response($code, $e->getMessage(), 'text/plain');
 }

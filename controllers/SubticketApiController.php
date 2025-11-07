@@ -26,9 +26,18 @@ class SubticketApiController extends ExtendedTicketApiController {
     /**
      * Set API key for testing (bypasses requireApiKey())
      *
+     * SECURITY WARNING: This method should ONLY be used in test environment!
+     * It bypasses normal API key validation and should be disabled in production.
+     *
      * @param API $key API key object
+     * @throws Exception if called in production environment
      */
-    public function setTestApiKey($key) {
+    public function setTestApiKey(API $key): void {
+        // Prevent test key bypass in production
+        if (defined('OSTICKET_PRODUCTION') && OSTICKET_PRODUCTION) {
+            throw new Exception('Test API key not allowed in production', 403);
+        }
+
         $this->testApiKey = $key;
     }
 
@@ -160,7 +169,7 @@ class SubticketApiController extends ExtendedTicketApiController {
         // Check if API key has department restrictions
         if (method_exists($apiKey, 'hasRestrictedDepartments') && $apiKey->hasRestrictedDepartments()) {
             $allowedDepartments = $apiKey->getRestrictedDepartments();
-            return in_array($ticketDeptId, $allowedDepartments);
+            return in_array($ticketDeptId, $allowedDepartments, true); // Strict comparison for type safety
         }
 
         // No restrictions = full access
@@ -252,19 +261,17 @@ class SubticketApiController extends ExtendedTicketApiController {
         }
 
         // 7. Iterate over child IDs and build result array
-        $children = [];
-        foreach ($childIds as $childId) {
-            // Lookup child ticket
+        // Optimized: Use array_values + array_filter to remove orphaned references
+        $children = array_values(array_filter(array_map(function($childId) {
             $childTicket = Ticket::lookup($childId);
 
-            // Skip if child ticket doesn't exist (orphaned reference)
+            // Skip orphaned references
             if (!$childTicket) {
-                continue;
+                return null;
             }
 
-            // Format ticket data using helper method
-            $children[] = $this->formatTicketData($childTicket);
-        }
+            return $this->formatTicketData($childTicket);
+        }, $childIds)));
 
         return ['children' => $children];
     }
@@ -418,8 +425,8 @@ class SubticketApiController extends ExtendedTicketApiController {
 
         return [
             'ticket_id' => (int)$ticket->getId(),
-            'number' => $ticket->getNumber(),
-            'subject' => $ticket->getSubject(),
+            'number' => $ticket->getNumber() ?? '',
+            'subject' => $ticket->getSubject() ?? 'No Subject',
             'status' => $status ? $status->getName() : 'Unknown',
         ];
     }
