@@ -743,9 +743,10 @@ class ApiEndpointsPlugin extends Plugin {
             }
 
             // Determine if file needs trailing slash based on naming convention
-            // Files WITHOUT path parameters: stats, statuses
-            // All others (get, update, delete, search, parent, list, create, unlink) HAVE path parameters
-            $has_no_path_param = preg_match('/-(stats|statuses)\.php$/', $source_file);
+            // Files WITHOUT path parameters: stats, statuses, search
+            // Files WITH path parameters: get, update, delete, parent, list, create, unlink
+            // Note: search uses query params + optional .xml/.json in PATH_INFO, so NO trailing slash
+            $has_no_path_param = preg_match('/-(stats|statuses|search)\.php$/', $source_file);
             $needs_trailing_slash = !$has_no_path_param;
 
             // Generate human-readable comment
