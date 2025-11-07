@@ -46,7 +46,7 @@ class SubticketApiController extends ExtendedTicketApiController {
      *
      * @return API|null API key object
      */
-    private function getApiKey() {
+    protected function getApiKey() {
         if ($this->testApiKey !== null) {
             return $this->testApiKey;
         }
