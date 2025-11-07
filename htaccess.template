@@ -1,0 +1,40 @@
+# =============================================================================
+# API Endpoints Plugin - Apache Rewrite Rules
+# =============================================================================
+#
+# These rules allow the API endpoint PHP files to be accessed directly
+# without being rewritten by osTicket's default API dispatcher (http.php)
+#
+# IMPORTANT: These rules must come BEFORE the default osTicket API rule!
+#
+# =============================================================================
+
+# Tickets Delete API endpoint (path parameter: ticket number)
+RewriteRule ^tickets-delete\.php/ - [L]
+
+# Tickets Get API endpoint (path parameter: ticket number)
+RewriteRule ^tickets-get\.php/ - [L]
+
+# Tickets Search API endpoint (no path parameter - uses query params + optional .xml/.json in PATH_INFO)
+RewriteRule ^tickets-search\.php - [L]
+
+# Tickets Stats API endpoint (no path parameter - optional .xml/.json in PATH_INFO)
+RewriteRule ^tickets-stats\.php - [L]
+
+# Tickets Statuses API endpoint (no path parameter - optional .xml/.json in PATH_INFO)
+RewriteRule ^tickets-statuses\.php - [L]
+
+# Tickets Update API endpoint (path parameter: ticket number)
+RewriteRule ^tickets-update\.php/ - [L]
+
+# Subticket Create API endpoint (path parameter: parent ticket number)
+RewriteRule ^tickets-subtickets-create\.php/ - [L]
+
+# Subticket List API endpoint (path parameter: parent ticket number)
+RewriteRule ^tickets-subtickets-list\.php/ - [L]
+
+# Subticket Parent API endpoint (path parameter: child ticket number)
+RewriteRule ^tickets-subtickets-parent\.php/ - [L]
+
+# Subticket Unlink API endpoint (path parameter: child ticket number)
+RewriteRule ^tickets-subtickets-unlink\.php/ - [L]

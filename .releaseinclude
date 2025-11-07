@@ -5,6 +5,7 @@
 plugin.php
 class.ApiEndpointsPlugin.php
 config.php
+htaccess.template
 
 # Controllers
 controllers/

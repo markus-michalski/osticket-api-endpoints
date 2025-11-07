@@ -672,56 +672,63 @@ class ApiEndpointsPlugin extends Plugin {
     }
 
     /**
-     * Add rewrite rules to /api/.htaccess (DYNAMIC)
+     * Add rewrite rules to /api/.htaccess (STATIC TEMPLATE)
      *
-     * Scans plugin's api/ directory and generates .htaccess rules automatically
-     * based on endpoint naming conventions. No need to manually add rules for new endpoints!
+     * Reads htaccess.template from plugin directory and inserts the rules
+     * into /api/.htaccess. This is more stable than dynamically generating rules.
      *
-     * Naming Convention Rules:
-     * - Files WITH path info (e.g., tickets-get.php/{number}.json)
-     *   need trailing slash: RewriteRule ^filename/ - [L]
-     * - Files WITHOUT path info (e.g., tickets-stats.php or tickets-create.php with body)
-     *   need no trailing slash: RewriteRule ^filename - [L]
-     *
-     * Detection: Files WITHOUT path parameters are: stats, statuses, create, unlink
-     * All others (get, update, delete, search, parent, list) HAVE path parameters
+     * Template file: include/plugins/api-endpoints/htaccess.template
+     * Target file: api/.htaccess
      *
      * @param array $errors Error messages array (by reference)
      * @return bool True on success
      */
     function addHtaccessRule(&$errors) {
         $htaccess_file = INCLUDE_DIR . '../api/.htaccess';
+        $template_file = __DIR__ . '/htaccess.template';
 
         // Check if .htaccess exists
         if (!file_exists($htaccess_file)) {
-            $errors[] = 'Warning: .htaccess not found in /api/ - you may need to add rewrite rule manually';
+            $errors[] = 'Warning: .htaccess not found in /api/ - you may need to add rewrite rules manually';
+            return false;
+        }
+
+        // Check if template exists
+        if (!file_exists($template_file)) {
+            $errors[] = 'Warning: htaccess.template not found in plugin directory';
             return false;
         }
 
         // Read current .htaccess
         $content = file_get_contents($htaccess_file);
-        $updated = false;
 
-        // Get all API files from plugin directory
-        $source_dir = __DIR__ . '/api/';
-        $api_files = glob($source_dir . '*.php');
+        // Read template
+        $template_rules = file_get_contents($template_file);
 
-        if (empty($api_files)) {
-            return true; // No files to add rules for
+        // Check if rules are already present (look for marker comment)
+        if (strpos($content, 'API Endpoints Plugin - Apache Rewrite Rules') !== false) {
+            // Rules already exist, skip
+            return true;
         }
 
-        // Find insertion point (after wildcard rule, before </IfModule>)
+        // Find insertion point (after wildcard rule, before default osTicket rule)
         $wildcard_pos = strpos($content, 'RewriteRule ^wildcard/');
         $insert_pos = false;
 
         if ($wildcard_pos !== false) {
-            // Insert after wildcard rule
+            // Insert after wildcard rule (find end of line)
             $insert_pos = strpos($content, "\n", $wildcard_pos) + 1;
         } else {
-            // Fallback: Insert before </IfModule>
-            $ifmodule_pos = strpos($content, '</IfModule>');
-            if ($ifmodule_pos !== false) {
-                $insert_pos = $ifmodule_pos;
+            // Fallback: Look for default API rule comment
+            $default_comment_pos = strpos($content, '# Default API endpoint');
+            if ($default_comment_pos !== false) {
+                $insert_pos = $default_comment_pos;
+            } else {
+                // Fallback: Insert before </IfModule>
+                $ifmodule_pos = strpos($content, '</IfModule>');
+                if ($ifmodule_pos !== false) {
+                    $insert_pos = $ifmodule_pos;
+                }
             }
         }
 
@@ -730,61 +737,22 @@ class ApiEndpointsPlugin extends Plugin {
             return false;
         }
 
-        // Build rules for all API files
-        $rules_to_add = array();
+        // Insert template rules
+        $content = substr_replace($content, "\n" . $template_rules . "\n", $insert_pos, 0);
 
-        foreach ($api_files as $source_file) {
-            $filename = basename($source_file, '.php');
-            $escaped_filename = str_replace('-', '\\-', $filename);
-
-            // Check if rule already exists
-            if (strpos($content, $escaped_filename . '\.php') !== false) {
-                continue; // Rule already exists
-            }
-
-            // Determine if file needs trailing slash based on naming convention
-            // Files WITHOUT path parameters: stats, statuses, search
-            // Files WITH path parameters: get, update, delete, parent, list, create, unlink
-            // Note: search uses query params + optional .xml/.json in PATH_INFO, so NO trailing slash
-            $has_no_path_param = preg_match('/-(stats|statuses|search)\.php$/', $source_file);
-            $needs_trailing_slash = !$has_no_path_param;
-
-            // Generate human-readable comment
-            $comment_name = ucwords(str_replace('-', ' ', $filename));
-            $comment = "\n# {$comment_name} API endpoint (pass through without rewriting)";
-
-            // Generate RewriteRule
-            if ($needs_trailing_slash) {
-                $rule = "\nRewriteRule ^{$escaped_filename}\.php/ - [L]";
-            } else {
-                $rule = "\nRewriteRule ^{$escaped_filename}\.php - [L]";
-            }
-
-            $rules_to_add[] = $comment . $rule . "\n";
-            $updated = true;
-        }
-
-        // Insert all rules at once
-        if (!empty($rules_to_add)) {
-            $all_rules = implode('', $rules_to_add);
-            $content = substr_replace($content, $all_rules, $insert_pos, 0);
-        }
-
-        // Write back to file only if changes were made
-        if ($updated) {
-            if (!file_put_contents($htaccess_file, $content)) {
-                $errors[] = 'Failed to update .htaccess - you may need to add rewrite rule manually';
-                return false;
-            }
+        // Write back to file
+        if (!file_put_contents($htaccess_file, $content)) {
+            $errors[] = 'Failed to update .htaccess - you may need to add rewrite rules manually';
+            return false;
         }
 
         return true;
     }
 
     /**
-     * Remove rewrite rules from /api/.htaccess (DYNAMIC)
+     * Remove rewrite rules from /api/.htaccess (STATIC TEMPLATE)
      *
-     * Removes all tickets-*.php rewrite rules from .htaccess.
+     * Removes the entire template block from .htaccess by finding the marker comment.
      * Works even after plugin directory is deleted!
      *
      * @return bool True on success
@@ -803,29 +771,50 @@ class ApiEndpointsPlugin extends Plugin {
             return false;
         }
 
-        $original_content = $content;
+        // Find start of our template block (marker comment)
+        $marker = '# =============================================================================';
+        $start_pos = strpos($content, $marker . "\n# API Endpoints Plugin - Apache Rewrite Rules");
 
-        // Remove all tickets-*.php rule blocks (comment + RewriteRule line)
-        // Pattern matches tickets-*.php with or without trailing slash
-        $pattern = '/\n# [^\n]+ API endpoint[^\n]*\nRewriteRule \^tickets\\-[^\n]+\.php\/? - \[L\]\n/';
-        $content = preg_replace($pattern, "\n", $content);
-
-        // Check if anything was actually removed
-        if ($content === $original_content) {
-            error_log('[API Endpoints] No .htaccess rules found to remove');
+        if ($start_pos === false) {
+            error_log('[API Endpoints] No .htaccess rules found to remove (marker not found)');
             return true; // Nothing to remove
         }
 
-        // Attempt to write
+        // Find end of template block (next empty line or closing IfModule)
+        // The template ends with the last RewriteRule line, so we look for the pattern:
+        // RewriteRule ^tickets-subtickets-unlink\.php/ - [L]
+        $search_start = $start_pos;
+        $end_marker = 'RewriteRule ^tickets-subtickets-unlink\.php/ - [L]';
+        $end_pos = strpos($content, $end_marker, $search_start);
+
+        if ($end_pos === false) {
+            // Fallback: look for any RewriteRule pattern and find the last one in our block
+            error_log('[API Endpoints] Could not find end marker, using fallback pattern');
+            // Find all RewriteRule lines after start_pos until we hit a non-tickets rule
+            preg_match('/RewriteRule \^tickets-[^\n]+\n(?!\s*RewriteRule \^tickets-)/',
+                       substr($content, $start_pos), $matches, PREG_OFFSET_CAPTURE);
+            if (!empty($matches)) {
+                $end_pos = $start_pos + $matches[0][1] + strlen($matches[0][0]);
+            } else {
+                error_log('[API Endpoints] Could not determine end of template block');
+                return false;
+            }
+        } else {
+            // Move past the end marker line
+            $end_pos = strpos($content, "\n", $end_pos) + 1;
+        }
+
+        // Remove the entire block (including leading newline)
+        $content = substr_replace($content, '', $start_pos, $end_pos - $start_pos);
+
+        // Write back
         $result = file_put_contents($htaccess_file, $content);
         if ($result === false) {
             error_log('[API Endpoints] FAILED to write .htaccess: ' . $htaccess_file . ' (check permissions)');
             return false;
         }
 
-        $rules_removed = substr_count($original_content, '# ') - substr_count($content, '# ');
-        error_log(sprintf('[API Endpoints] Removed %d .htaccess rules', $rules_removed));
-
+        error_log('[API Endpoints] Removed .htaccess template block');
         return true;
     }
 
