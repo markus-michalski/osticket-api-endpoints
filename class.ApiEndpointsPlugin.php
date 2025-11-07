@@ -683,6 +683,18 @@ class ApiEndpointsPlugin extends Plugin {
             $success = false;
         }
 
+        // Deploy tickets-subtickets-list.php
+        $subticket_list_source = __DIR__ . '/api/tickets-subtickets-list.php';
+        $subticket_list_target = INCLUDE_DIR . '../api/tickets-subtickets-list.php';
+
+        if (!file_exists($subticket_list_source)) {
+            $errors[] = 'API file not found: ' . $subticket_list_source;
+            $success = false;
+        } elseif (!copy($subticket_list_source, $subticket_list_target)) {
+            $errors[] = 'Failed to deploy tickets-subtickets-list.php to /api/';
+            $success = false;
+        }
+
         // Add .htaccess rule if not present
         $this->addHtaccessRule($errors);
 
@@ -813,6 +825,23 @@ class ApiEndpointsPlugin extends Plugin {
             $updated = true;
         }
 
+        // Check and add tickets-subtickets-list.php rule if not present
+        if (strpos($content, 'tickets-subtickets-list\.php/') === false) {
+            $subticket_list_rule = "\n# Subticket List API endpoint (pass through without rewriting)\nRewriteRule ^tickets-subtickets-list\.php/ - [L]\n";
+
+            // Find the tickets-subtickets-parent rule (should be there now)
+            $parent_pos = strpos($content, 'RewriteRule ^tickets-subtickets-parent\.php');
+            if ($parent_pos !== false) {
+                // Insert after tickets-subtickets-parent rule
+                $line_end = strpos($content, "\n", $parent_pos);
+                $content = substr_replace($content, $subticket_list_rule, $line_end + 1, 0);
+            } else {
+                // Fallback: add at end before </IfModule>
+                $content = str_replace('</IfModule>', $subticket_list_rule . "\n</IfModule>", $content);
+            }
+            $updated = true;
+        }
+
         // Write back to file only if changes were made
         if ($updated) {
             if (!file_put_contents($htaccess_file, $content)) {
@@ -860,6 +889,10 @@ class ApiEndpointsPlugin extends Plugin {
 
         // Remove tickets-subtickets-parent.php rule block (including comment)
         $pattern = '/\n# Subticket Parent API endpoint.*?\nRewriteRule \^tickets-subtickets-parent\\\.php\/ - \[L\]\n/s';
+        $content = preg_replace($pattern, "\n", $content);
+
+        // Remove tickets-subtickets-list.php rule block (including comment)
+        $pattern = '/\n# Subticket List API endpoint.*?\nRewriteRule \^tickets-subtickets-list\\\.php\/ - \[L\]\n/s';
         $content = preg_replace($pattern, "\n", $content);
 
         file_put_contents($htaccess_file, $content);
@@ -910,6 +943,12 @@ class ApiEndpointsPlugin extends Plugin {
         $subticket_parent_target = INCLUDE_DIR . '../api/tickets-subtickets-parent.php';
         if (file_exists($subticket_parent_target)) {
             @unlink($subticket_parent_target);
+        }
+
+        // Remove tickets-subtickets-list.php
+        $subticket_list_target = INCLUDE_DIR . '../api/tickets-subtickets-list.php';
+        if (file_exists($subticket_list_target)) {
+            @unlink($subticket_list_target);
         }
 
         return true;
