@@ -770,17 +770,38 @@ class ApiEndpointsPlugin extends Plugin {
         $htaccess_file = INCLUDE_DIR . '../api/.htaccess';
 
         if (!file_exists($htaccess_file)) {
-            return true;
+            error_log('[API Endpoints] .htaccess not found: ' . $htaccess_file);
+            return true; // Nothing to clean
         }
 
         $content = file_get_contents($htaccess_file);
+        if ($content === false) {
+            error_log('[API Endpoints] FAILED to read .htaccess: ' . $htaccess_file);
+            return false;
+        }
+
+        $original_content = $content;
 
         // Remove all tickets-*.php rule blocks (comment + RewriteRule line)
         // Pattern matches tickets-*.php with or without trailing slash
         $pattern = '/\n# [^\n]+ API endpoint[^\n]*\nRewriteRule \^tickets\\-[^\n]+\.php\/? - \[L\]\n/';
         $content = preg_replace($pattern, "\n", $content);
 
-        file_put_contents($htaccess_file, $content);
+        // Check if anything was actually removed
+        if ($content === $original_content) {
+            error_log('[API Endpoints] No .htaccess rules found to remove');
+            return true; // Nothing to remove
+        }
+
+        // Attempt to write
+        $result = file_put_contents($htaccess_file, $content);
+        if ($result === false) {
+            error_log('[API Endpoints] FAILED to write .htaccess: ' . $htaccess_file . ' (check permissions)');
+            return false;
+        }
+
+        $rules_removed = substr_count($original_content, '# ') - substr_count($content, '# ');
+        error_log(sprintf('[API Endpoints] Removed %d .htaccess rules', $rules_removed));
 
         return true;
     }
@@ -799,20 +820,38 @@ class ApiEndpointsPlugin extends Plugin {
 
         // Scan /api/ directory for our deployed files (tickets-*.php pattern)
         $target_dir = INCLUDE_DIR . '../api/';
+
+        // Check if target directory exists
+        if (!is_dir($target_dir)) {
+            error_log('[API Endpoints] Target directory does not exist: ' . $target_dir);
+            return false;
+        }
+
         $deployed_files = glob($target_dir . 'tickets-*.php');
 
         if (empty($deployed_files)) {
+            error_log('[API Endpoints] No tickets-*.php files found in: ' . $target_dir);
             return true; // No files to remove
         }
 
         // Remove each deployed file
+        $removed_count = 0;
+        $failed_count = 0;
         foreach ($deployed_files as $target_file) {
             if (file_exists($target_file)) {
-                @unlink($target_file);
+                if (unlink($target_file)) {
+                    $removed_count++;
+                    error_log('[API Endpoints] Removed: ' . basename($target_file));
+                } else {
+                    $failed_count++;
+                    error_log('[API Endpoints] FAILED to remove: ' . $target_file . ' (check permissions)');
+                }
             }
         }
 
-        return true;
+        error_log(sprintf('[API Endpoints] Cleanup complete: %d removed, %d failed', $removed_count, $failed_count));
+
+        return ($failed_count === 0);
     }
 
     /**
