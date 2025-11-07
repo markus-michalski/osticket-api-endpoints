@@ -603,7 +603,10 @@ class ApiEndpointsPlugin extends Plugin {
     }
 
     /**
-     * Deploy API files to /api/ directory
+     * Deploy API files to /api/ directory (DYNAMIC)
+     *
+     * Scans plugin's api/ directory and deploys all *.php files automatically.
+     * No need to manually add new endpoints to this method!
      *
      * @param array $errors Error messages array (by reference)
      * @return bool True on success
@@ -611,122 +614,55 @@ class ApiEndpointsPlugin extends Plugin {
     function deployApiFiles(&$errors) {
         $success = true;
 
-        // Deploy tickets-update.php
-        $update_source = __DIR__ . '/api/tickets-update.php';
-        $update_target = INCLUDE_DIR . '../api/tickets-update.php';
+        // Get plugin's api/ directory
+        $source_dir = __DIR__ . '/api/';
+        $target_dir = INCLUDE_DIR . '../api/';
 
-        if (!file_exists($update_source)) {
-            $errors[] = 'API file not found: ' . $update_source;
-            $success = false;
-        } elseif (!copy($update_source, $update_target)) {
-            $errors[] = 'Failed to deploy tickets-update.php to /api/';
-            $success = false;
+        // Check if source directory exists
+        if (!is_dir($source_dir)) {
+            $errors[] = 'Plugin API directory not found: ' . $source_dir;
+            return false;
         }
 
-        // Deploy tickets-get.php
-        $get_source = __DIR__ . '/api/tickets-get.php';
-        $get_target = INCLUDE_DIR . '../api/tickets-get.php';
+        // Scan for all PHP files in plugin's api/ directory
+        $api_files = glob($source_dir . '*.php');
 
-        if (!file_exists($get_source)) {
-            $errors[] = 'API file not found: ' . $get_source;
-            $success = false;
-        } elseif (!copy($get_source, $get_target)) {
-            $errors[] = 'Failed to deploy tickets-get.php to /api/';
-            $success = false;
+        if (empty($api_files)) {
+            $errors[] = 'No API files found in plugin directory: ' . $source_dir;
+            return false;
         }
 
-        // Deploy tickets-search.php
-        $search_source = __DIR__ . '/api/tickets-search.php';
-        $search_target = INCLUDE_DIR . '../api/tickets-search.php';
+        // Deploy each file
+        foreach ($api_files as $source_file) {
+            $filename = basename($source_file);
+            $target_file = $target_dir . $filename;
 
-        if (!file_exists($search_source)) {
-            $errors[] = 'API file not found: ' . $search_source;
-            $success = false;
-        } elseif (!copy($search_source, $search_target)) {
-            $errors[] = 'Failed to deploy tickets-search.php to /api/';
-            $success = false;
+            if (!copy($source_file, $target_file)) {
+                $errors[] = sprintf('Failed to deploy %s to /api/', $filename);
+                $success = false;
+            }
         }
 
-        // Deploy tickets-delete.php
-        $delete_source = __DIR__ . '/api/tickets-delete.php';
-        $delete_target = INCLUDE_DIR . '../api/tickets-delete.php';
-
-        if (!file_exists($delete_source)) {
-            $errors[] = 'API file not found: ' . $delete_source;
-            $success = false;
-        } elseif (!copy($delete_source, $delete_target)) {
-            $errors[] = 'Failed to deploy tickets-delete.php to /api/';
-            $success = false;
-        }
-
-        // Deploy tickets-stats.php
-        $stats_source = __DIR__ . '/api/tickets-stats.php';
-        $stats_target = INCLUDE_DIR . '../api/tickets-stats.php';
-
-        if (!file_exists($stats_source)) {
-            $errors[] = 'API file not found: ' . $stats_source;
-            $success = false;
-        } elseif (!copy($stats_source, $stats_target)) {
-            $errors[] = 'Failed to deploy tickets-stats.php to /api/';
-            $success = false;
-        }
-
-        // Deploy tickets-subtickets-parent.php
-        $subticket_parent_source = __DIR__ . '/api/tickets-subtickets-parent.php';
-        $subticket_parent_target = INCLUDE_DIR . '../api/tickets-subtickets-parent.php';
-
-        if (!file_exists($subticket_parent_source)) {
-            $errors[] = 'API file not found: ' . $subticket_parent_source;
-            $success = false;
-        } elseif (!copy($subticket_parent_source, $subticket_parent_target)) {
-            $errors[] = 'Failed to deploy tickets-subtickets-parent.php to /api/';
-            $success = false;
-        }
-
-        // Deploy tickets-subtickets-list.php
-        $subticket_list_source = __DIR__ . '/api/tickets-subtickets-list.php';
-        $subticket_list_target = INCLUDE_DIR . '../api/tickets-subtickets-list.php';
-
-        if (!file_exists($subticket_list_source)) {
-            $errors[] = 'API file not found: ' . $subticket_list_source;
-            $success = false;
-        } elseif (!copy($subticket_list_source, $subticket_list_target)) {
-            $errors[] = 'Failed to deploy tickets-subtickets-list.php to /api/';
-            $success = false;
-        }
-
-        // Deploy tickets-subtickets-create.php
-        $subticket_create_source = __DIR__ . '/api/tickets-subtickets-create.php';
-        $subticket_create_target = INCLUDE_DIR . '../api/tickets-subtickets-create.php';
-
-        if (!file_exists($subticket_create_source)) {
-            $errors[] = 'API file not found: ' . $subticket_create_source;
-            $success = false;
-        } elseif (!copy($subticket_create_source, $subticket_create_target)) {
-            $errors[] = 'Failed to deploy tickets-subtickets-create.php to /api/';
-            $success = false;
-        }
-
-        // Deploy tickets-subtickets-unlink.php
-        $subticket_unlink_source = __DIR__ . '/api/tickets-subtickets-unlink.php';
-        $subticket_unlink_target = INCLUDE_DIR . '../api/tickets-subtickets-unlink.php';
-
-        if (!file_exists($subticket_unlink_source)) {
-            $errors[] = 'API file not found: ' . $subticket_unlink_source;
-            $success = false;
-        } elseif (!copy($subticket_unlink_source, $subticket_unlink_target)) {
-            $errors[] = 'Failed to deploy tickets-subtickets-unlink.php to /api/';
-            $success = false;
-        }
-
-        // Add .htaccess rule if not present
+        // Add .htaccess rules for all deployed files
         $this->addHtaccessRule($errors);
 
         return $success;
     }
 
     /**
-     * Add rewrite rule to /api/.htaccess
+     * Add rewrite rules to /api/.htaccess (DYNAMIC)
+     *
+     * Scans plugin's api/ directory and generates .htaccess rules automatically
+     * based on endpoint naming conventions. No need to manually add rules for new endpoints!
+     *
+     * Naming Convention Rules:
+     * - Files WITH path info (e.g., tickets-get.php/{number}.json)
+     *   need trailing slash: RewriteRule ^filename/ - [L]
+     * - Files WITHOUT path info (e.g., tickets-stats.php or tickets-create.php with body)
+     *   need no trailing slash: RewriteRule ^filename - [L]
+     *
+     * Detection: Files WITHOUT path parameters are: stats, statuses, create, unlink
+     * All others (get, update, delete, search, parent, list) HAVE path parameters
      *
      * @param array $errors Error messages array (by reference)
      * @return bool True on success
@@ -742,162 +678,73 @@ class ApiEndpointsPlugin extends Plugin {
 
         // Read current .htaccess
         $content = file_get_contents($htaccess_file);
-
         $updated = false;
 
-        // Check and add tickets-update.php rule if not present
-        if (strpos($content, 'tickets-update\.php/') === false) {
-            $update_rule = "\n# Ticket Update API endpoint (pass through without rewriting)\nRewriteRule ^tickets-update\.php/ - [L]\n";
+        // Get all API files from plugin directory
+        $source_dir = __DIR__ . '/api/';
+        $api_files = glob($source_dir . '*.php');
 
-            // Find the wildcard rule
-            $wildcard_pos = strpos($content, 'RewriteRule ^wildcard/');
-            if ($wildcard_pos === false) {
-                $errors[] = 'Warning: Could not find wildcard rule in .htaccess - adding rule at end';
-                // Add at end before </IfModule>
-                $content = str_replace('</IfModule>', $update_rule . "\n</IfModule>", $content);
-            } else {
-                // Find end of wildcard rule line
-                $line_end = strpos($content, "\n", $wildcard_pos);
-                // Insert after wildcard rule
-                $content = substr_replace($content, $update_rule, $line_end + 1, 0);
+        if (empty($api_files)) {
+            return true; // No files to add rules for
+        }
+
+        // Find insertion point (after wildcard rule, before </IfModule>)
+        $wildcard_pos = strpos($content, 'RewriteRule ^wildcard/');
+        $insert_pos = false;
+
+        if ($wildcard_pos !== false) {
+            // Insert after wildcard rule
+            $insert_pos = strpos($content, "\n", $wildcard_pos) + 1;
+        } else {
+            // Fallback: Insert before </IfModule>
+            $ifmodule_pos = strpos($content, '</IfModule>');
+            if ($ifmodule_pos !== false) {
+                $insert_pos = $ifmodule_pos;
             }
+        }
+
+        if ($insert_pos === false) {
+            $errors[] = 'Warning: Could not find insertion point in .htaccess';
+            return false;
+        }
+
+        // Build rules for all API files
+        $rules_to_add = array();
+
+        foreach ($api_files as $source_file) {
+            $filename = basename($source_file, '.php');
+            $escaped_filename = str_replace('-', '\\-', $filename);
+
+            // Check if rule already exists
+            if (strpos($content, $escaped_filename . '\.php') !== false) {
+                continue; // Rule already exists
+            }
+
+            // Determine if file needs trailing slash based on naming convention
+            // Files WITHOUT path parameters: stats, statuses, create, unlink
+            // All others (get, update, delete, search, parent, list) HAVE path parameters
+            $has_no_path_param = preg_match('/-(stats|statuses|create|unlink)\.php$/', $source_file);
+            $needs_trailing_slash = !$has_no_path_param;
+
+            // Generate human-readable comment
+            $comment_name = ucwords(str_replace('-', ' ', $filename));
+            $comment = "\n# {$comment_name} API endpoint (pass through without rewriting)";
+
+            // Generate RewriteRule
+            if ($needs_trailing_slash) {
+                $rule = "\nRewriteRule ^{$escaped_filename}\.php/ - [L]";
+            } else {
+                $rule = "\nRewriteRule ^{$escaped_filename}\.php - [L]";
+            }
+
+            $rules_to_add[] = $comment . $rule . "\n";
             $updated = true;
         }
 
-        // Check and add tickets-get.php rule if not present
-        if (strpos($content, 'tickets-get\.php/') === false) {
-            $get_rule = "\n# Ticket Get API endpoint (pass through without rewriting)\nRewriteRule ^tickets-get\.php/ - [L]\n";
-
-            // Find the tickets-update rule (should be there now)
-            $update_pos = strpos($content, 'RewriteRule ^tickets-update\.php/');
-            if ($update_pos !== false) {
-                // Insert after tickets-update rule
-                $line_end = strpos($content, "\n", $update_pos);
-                $content = substr_replace($content, $get_rule, $line_end + 1, 0);
-            } else {
-                // Fallback: add at end before </IfModule>
-                $content = str_replace('</IfModule>', $get_rule . "\n</IfModule>", $content);
-            }
-            $updated = true;
-        }
-
-        // Check and add tickets-search.php rule if not present
-        if (strpos($content, 'tickets-search\.php') === false) {
-            $search_rule = "\n# Ticket Search API endpoint (pass through without rewriting)\nRewriteRule ^tickets-search\.php - [L]\n";
-
-            // Find the tickets-get rule (should be there now)
-            $get_pos = strpos($content, 'RewriteRule ^tickets-get\.php/');
-            if ($get_pos !== false) {
-                // Insert after tickets-get rule
-                $line_end = strpos($content, "\n", $get_pos);
-                $content = substr_replace($content, $search_rule, $line_end + 1, 0);
-            } else {
-                // Fallback: add at end before </IfModule>
-                $content = str_replace('</IfModule>', $search_rule . "\n</IfModule>", $content);
-            }
-            $updated = true;
-        }
-
-        // Check and add tickets-delete.php rule if not present
-        if (strpos($content, 'tickets-delete\.php/') === false) {
-            $delete_rule = "\n# Ticket Delete API endpoint (pass through without rewriting)\nRewriteRule ^tickets-delete\.php/ - [L]\n";
-
-            // Find the tickets-search rule (should be there now)
-            $search_pos = strpos($content, 'RewriteRule ^tickets-search\.php');
-            if ($search_pos !== false) {
-                // Insert after tickets-search rule
-                $line_end = strpos($content, "\n", $search_pos);
-                $content = substr_replace($content, $delete_rule, $line_end + 1, 0);
-            } else {
-                // Fallback: add at end before </IfModule>
-                $content = str_replace('</IfModule>', $delete_rule . "\n</IfModule>", $content);
-            }
-            $updated = true;
-        }
-
-        // Check and add tickets-stats.php rule if not present
-        if (strpos($content, 'tickets-stats\.php') === false) {
-            $stats_rule = "\n# Ticket Stats API endpoint (pass through without rewriting)\nRewriteRule ^tickets-stats\.php - [L]\n";
-
-            // Find the tickets-delete rule (should be there now)
-            $delete_pos = strpos($content, 'RewriteRule ^tickets-delete\.php');
-            if ($delete_pos !== false) {
-                // Insert after tickets-delete rule
-                $line_end = strpos($content, "\n", $delete_pos);
-                $content = substr_replace($content, $stats_rule, $line_end + 1, 0);
-            } else {
-                // Fallback: add at end before </IfModule>
-                $content = str_replace('</IfModule>', $stats_rule . "\n</IfModule>", $content);
-            }
-            $updated = true;
-        }
-
-        // Check and add tickets-subtickets-parent.php rule if not present
-        if (strpos($content, 'tickets-subtickets-parent\.php/') === false) {
-            $subticket_parent_rule = "\n# Subticket Parent API endpoint (pass through without rewriting)\nRewriteRule ^tickets-subtickets-parent\.php/ - [L]\n";
-
-            // Find the tickets-stats rule (should be there now)
-            $stats_pos = strpos($content, 'RewriteRule ^tickets-stats\.php');
-            if ($stats_pos !== false) {
-                // Insert after tickets-stats rule
-                $line_end = strpos($content, "\n", $stats_pos);
-                $content = substr_replace($content, $subticket_parent_rule, $line_end + 1, 0);
-            } else {
-                // Fallback: add at end before </IfModule>
-                $content = str_replace('</IfModule>', $subticket_parent_rule . "\n</IfModule>", $content);
-            }
-            $updated = true;
-        }
-
-        // Check and add tickets-subtickets-list.php rule if not present
-        if (strpos($content, 'tickets-subtickets-list\.php/') === false) {
-            $subticket_list_rule = "\n# Subticket List API endpoint (pass through without rewriting)\nRewriteRule ^tickets-subtickets-list\.php/ - [L]\n";
-
-            // Find the tickets-subtickets-parent rule (should be there now)
-            $parent_pos = strpos($content, 'RewriteRule ^tickets-subtickets-parent\.php');
-            if ($parent_pos !== false) {
-                // Insert after tickets-subtickets-parent rule
-                $line_end = strpos($content, "\n", $parent_pos);
-                $content = substr_replace($content, $subticket_list_rule, $line_end + 1, 0);
-            } else {
-                // Fallback: add at end before </IfModule>
-                $content = str_replace('</IfModule>', $subticket_list_rule . "\n</IfModule>", $content);
-            }
-            $updated = true;
-        }
-
-        // Check and add tickets-subtickets-create.php rule if not present
-        if (strpos($content, 'tickets-subtickets-create\.php') === false) {
-            $subticket_create_rule = "\n# Subticket Create API endpoint (pass through without rewriting)\nRewriteRule ^tickets-subtickets-create\.php - [L]\n";
-
-            // Find the tickets-subtickets-list rule (should be there now)
-            $list_pos = strpos($content, 'RewriteRule ^tickets-subtickets-list\.php');
-            if ($list_pos !== false) {
-                // Insert after tickets-subtickets-list rule
-                $line_end = strpos($content, "\n", $list_pos);
-                $content = substr_replace($content, $subticket_create_rule, $line_end + 1, 0);
-            } else {
-                // Fallback: add at end before </IfModule>
-                $content = str_replace('</IfModule>', $subticket_create_rule . "\n</IfModule>", $content);
-            }
-            $updated = true;
-        }
-
-        // Check and add tickets-subtickets-unlink.php rule if not present
-        if (strpos($content, 'tickets-subtickets-unlink\.php') === false) {
-            $subticket_unlink_rule = "\n# Subticket Unlink API endpoint (pass through without rewriting)\nRewriteRule ^tickets-subtickets-unlink\.php - [L]\n";
-
-            // Find the tickets-subtickets-create rule (should be there now)
-            $create_pos = strpos($content, 'RewriteRule ^tickets-subtickets-create\.php');
-            if ($create_pos !== false) {
-                // Insert after tickets-subtickets-create rule
-                $line_end = strpos($content, "\n", $create_pos);
-                $content = substr_replace($content, $subticket_unlink_rule, $line_end + 1, 0);
-            } else {
-                // Fallback: add at end before </IfModule>
-                $content = str_replace('</IfModule>', $subticket_unlink_rule . "\n</IfModule>", $content);
-            }
-            $updated = true;
+        // Insert all rules at once
+        if (!empty($rules_to_add)) {
+            $all_rules = implode('', $rules_to_add);
+            $content = substr_replace($content, $all_rules, $insert_pos, 0);
         }
 
         // Write back to file only if changes were made
@@ -912,7 +759,10 @@ class ApiEndpointsPlugin extends Plugin {
     }
 
     /**
-     * Remove rewrite rules from /api/.htaccess
+     * Remove rewrite rules from /api/.htaccess (DYNAMIC)
+     *
+     * Scans plugin's api/ directory and removes all corresponding .htaccess rules.
+     * No need to manually add cleanup for new endpoints!
      *
      * @return bool True on success
      */
@@ -925,41 +775,24 @@ class ApiEndpointsPlugin extends Plugin {
 
         $content = file_get_contents($htaccess_file);
 
-        // Remove tickets-update.php rule block (including comment)
-        $pattern = '/\n# Ticket Update API endpoint.*?\nRewriteRule \^tickets-update\\\.php\/ - \[L\]\n/s';
-        $content = preg_replace($pattern, "\n", $content);
+        // Get all API files from plugin directory
+        $source_dir = __DIR__ . '/api/';
+        $api_files = glob($source_dir . '*.php');
 
-        // Remove tickets-get.php rule block (including comment)
-        $pattern = '/\n# Ticket Get API endpoint.*?\nRewriteRule \^tickets-get\\\.php\/ - \[L\]\n/s';
-        $content = preg_replace($pattern, "\n", $content);
+        if (empty($api_files)) {
+            return true; // No files to remove rules for
+        }
 
-        // Remove tickets-search.php rule block (including comment)
-        $pattern = '/\n# Ticket Search API endpoint.*?\nRewriteRule \^tickets-search\\\.php - \[L\]\n/s';
-        $content = preg_replace($pattern, "\n", $content);
+        // Remove rule blocks for each API file
+        foreach ($api_files as $source_file) {
+            $filename = basename($source_file, '.php');
+            $escaped_filename = str_replace('-', '\\-', $filename);
 
-        // Remove tickets-delete.php rule block (including comment)
-        $pattern = '/\n# Ticket Delete API endpoint.*?\nRewriteRule \^tickets-delete\\\.php\/ - \[L\]\n/s';
-        $content = preg_replace($pattern, "\n", $content);
-
-        // Remove tickets-stats.php rule block (including comment)
-        $pattern = '/\n# Ticket Stats API endpoint.*?\nRewriteRule \^tickets-stats\\\.php - \[L\]\n/s';
-        $content = preg_replace($pattern, "\n", $content);
-
-        // Remove tickets-subtickets-parent.php rule block (including comment)
-        $pattern = '/\n# Subticket Parent API endpoint.*?\nRewriteRule \^tickets-subtickets-parent\\\.php\/ - \[L\]\n/s';
-        $content = preg_replace($pattern, "\n", $content);
-
-        // Remove tickets-subtickets-list.php rule block (including comment)
-        $pattern = '/\n# Subticket List API endpoint.*?\nRewriteRule \^tickets-subtickets-list\\\.php\/ - \[L\]\n/s';
-        $content = preg_replace($pattern, "\n", $content);
-
-        // Remove tickets-subtickets-create.php rule block (including comment)
-        $pattern = '/\n# Subticket Create API endpoint.*?\nRewriteRule \^tickets-subtickets-create\\\.php - \[L\]\n/s';
-        $content = preg_replace($pattern, "\n", $content);
-
-        // Remove tickets-subtickets-unlink.php rule block (including comment)
-        $pattern = '/\n# Subticket Unlink API endpoint.*?\nRewriteRule \^tickets-subtickets-unlink\\\.php - \[L\]\n/s';
-        $content = preg_replace($pattern, "\n", $content);
+            // Remove rule block (comment + RewriteRule line)
+            // Pattern matches both with and without trailing slash
+            $pattern = '/\n# [^\n]+ API endpoint[^\n]*\nRewriteRule \^' . $escaped_filename . '\\\.php\/? - \[L\]\n/';
+            $content = preg_replace($pattern, "\n", $content);
+        }
 
         file_put_contents($htaccess_file, $content);
 
@@ -967,7 +800,10 @@ class ApiEndpointsPlugin extends Plugin {
     }
 
     /**
-     * Remove deployed API files from /api/ directory
+     * Remove deployed API files from /api/ directory (DYNAMIC)
+     *
+     * Scans plugin's api/ directory and removes all corresponding deployed files.
+     * No need to manually add cleanup for new endpoints!
      *
      * @return bool True on success
      */
@@ -975,58 +811,23 @@ class ApiEndpointsPlugin extends Plugin {
         // Remove .htaccess rules
         $this->removeHtaccessRule();
 
-        // Remove tickets-update.php
-        $update_target = INCLUDE_DIR . '../api/tickets-update.php';
-        if (file_exists($update_target)) {
-            @unlink($update_target);
+        // Get all API files from plugin directory
+        $source_dir = __DIR__ . '/api/';
+        $api_files = glob($source_dir . '*.php');
+
+        if (empty($api_files)) {
+            return true; // No files to remove
         }
 
-        // Remove tickets-get.php
-        $get_target = INCLUDE_DIR . '../api/tickets-get.php';
-        if (file_exists($get_target)) {
-            @unlink($get_target);
-        }
+        // Remove each deployed file
+        $target_dir = INCLUDE_DIR . '../api/';
+        foreach ($api_files as $source_file) {
+            $filename = basename($source_file);
+            $target_file = $target_dir . $filename;
 
-        // Remove tickets-search.php
-        $search_target = INCLUDE_DIR . '../api/tickets-search.php';
-        if (file_exists($search_target)) {
-            @unlink($search_target);
-        }
-
-        // Remove tickets-delete.php
-        $delete_target = INCLUDE_DIR . '../api/tickets-delete.php';
-        if (file_exists($delete_target)) {
-            @unlink($delete_target);
-        }
-
-        // Remove tickets-stats.php
-        $stats_target = INCLUDE_DIR . '../api/tickets-stats.php';
-        if (file_exists($stats_target)) {
-            @unlink($stats_target);
-        }
-
-        // Remove tickets-subtickets-parent.php
-        $subticket_parent_target = INCLUDE_DIR . '../api/tickets-subtickets-parent.php';
-        if (file_exists($subticket_parent_target)) {
-            @unlink($subticket_parent_target);
-        }
-
-        // Remove tickets-subtickets-list.php
-        $subticket_list_target = INCLUDE_DIR . '../api/tickets-subtickets-list.php';
-        if (file_exists($subticket_list_target)) {
-            @unlink($subticket_list_target);
-        }
-
-        // Remove tickets-subtickets-create.php
-        $subticket_create_target = INCLUDE_DIR . '../api/tickets-subtickets-create.php';
-        if (file_exists($subticket_create_target)) {
-            @unlink($subticket_create_target);
-        }
-
-        // Remove tickets-subtickets-unlink.php
-        $subticket_unlink_target = INCLUDE_DIR . '../api/tickets-subtickets-unlink.php';
-        if (file_exists($subticket_unlink_target)) {
-            @unlink($subticket_unlink_target);
+            if (file_exists($target_file)) {
+                @unlink($target_file);
+            }
         }
 
         return true;
