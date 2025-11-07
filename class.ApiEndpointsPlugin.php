@@ -761,8 +761,8 @@ class ApiEndpointsPlugin extends Plugin {
     /**
      * Remove rewrite rules from /api/.htaccess (DYNAMIC)
      *
-     * Scans plugin's api/ directory and removes all corresponding .htaccess rules.
-     * No need to manually add cleanup for new endpoints!
+     * Removes all tickets-*.php rewrite rules from .htaccess.
+     * Works even after plugin directory is deleted!
      *
      * @return bool True on success
      */
@@ -775,24 +775,10 @@ class ApiEndpointsPlugin extends Plugin {
 
         $content = file_get_contents($htaccess_file);
 
-        // Get all API files from plugin directory
-        $source_dir = __DIR__ . '/api/';
-        $api_files = glob($source_dir . '*.php');
-
-        if (empty($api_files)) {
-            return true; // No files to remove rules for
-        }
-
-        // Remove rule blocks for each API file
-        foreach ($api_files as $source_file) {
-            $filename = basename($source_file, '.php');
-            $escaped_filename = str_replace('-', '\\-', $filename);
-
-            // Remove rule block (comment + RewriteRule line)
-            // Pattern matches both with and without trailing slash
-            $pattern = '/\n# [^\n]+ API endpoint[^\n]*\nRewriteRule \^' . $escaped_filename . '\\\.php\/? - \[L\]\n/';
-            $content = preg_replace($pattern, "\n", $content);
-        }
+        // Remove all tickets-*.php rule blocks (comment + RewriteRule line)
+        // Pattern matches tickets-*.php with or without trailing slash
+        $pattern = '/\n# [^\n]+ API endpoint[^\n]*\nRewriteRule \^tickets\\-[^\n]+\.php\/? - \[L\]\n/';
+        $content = preg_replace($pattern, "\n", $content);
 
         file_put_contents($htaccess_file, $content);
 
@@ -802,29 +788,25 @@ class ApiEndpointsPlugin extends Plugin {
     /**
      * Remove deployed API files from /api/ directory (DYNAMIC)
      *
-     * Scans plugin's api/ directory and removes all corresponding deployed files.
-     * No need to manually add cleanup for new endpoints!
+     * Scans /api/ directory for files deployed by this plugin and removes them.
+     * Works even after plugin directory is deleted!
      *
      * @return bool True on success
      */
     function removeApiFiles() {
-        // Remove .htaccess rules
+        // Remove .htaccess rules first
         $this->removeHtaccessRule();
 
-        // Get all API files from plugin directory
-        $source_dir = __DIR__ . '/api/';
-        $api_files = glob($source_dir . '*.php');
+        // Scan /api/ directory for our deployed files (tickets-*.php pattern)
+        $target_dir = INCLUDE_DIR . '../api/';
+        $deployed_files = glob($target_dir . 'tickets-*.php');
 
-        if (empty($api_files)) {
+        if (empty($deployed_files)) {
             return true; // No files to remove
         }
 
         // Remove each deployed file
-        $target_dir = INCLUDE_DIR . '../api/';
-        foreach ($api_files as $source_file) {
-            $filename = basename($source_file);
-            $target_file = $target_dir . $filename;
-
+        foreach ($deployed_files as $target_file) {
             if (file_exists($target_file)) {
                 @unlink($target_file);
             }
