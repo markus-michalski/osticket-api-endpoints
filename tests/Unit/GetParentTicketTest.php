@@ -444,17 +444,16 @@ class GetParentTicketTest extends TestCase {
         $controller->setTestApiKey($apiKey);
         $result = $controller->getParent(200);
 
-        // Assert: Should handle gracefully (return null or throw 404)
-        // Implementation can choose either approach - test both possibilities
-        if (isset($result['parent'])) {
-            $this->assertNull($result['parent'],
-                'Parent should be null when parent ticket does not exist (orphaned reference)');
-        } else {
-            // Alternative: throw Exception
-            $this->expectException(Exception::class);
-            $this->expectExceptionCode(404);
-            $this->expectExceptionMessage('Parent ticket not found');
-        }
+        // Assert: Should handle gracefully (return null)
+        // When parent reference is orphaned, plugin returns null gracefully
+        $this->assertIsArray($result,
+            'Result should be an array');
+
+        $this->assertArrayHasKey('parent', $result,
+            'Result should have "parent" key');
+
+        $this->assertNull($result['parent'],
+            'Parent should be null when parent ticket does not exist (orphaned reference)');
     }
 
     // ========================================================================
