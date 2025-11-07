@@ -707,8 +707,13 @@ class ApiEndpointsPlugin extends Plugin {
 
         // Check if rules are already present (look for marker comment)
         if (strpos($content, 'API Endpoints Plugin - Apache Rewrite Rules') !== false) {
-            // Rules already exist, skip
-            return true;
+            // Rules already exist - REMOVE them first, then insert fresh copy
+            // This ensures updates to htaccess.template are always applied
+            error_log('[API Endpoints] Replacing existing .htaccess rules with updated template');
+            $this->removeHtaccessRule();
+
+            // Re-read .htaccess after removal
+            $content = file_get_contents($htaccess_file);
         }
 
         // Find insertion point (after wildcard rule, before default osTicket rule)
