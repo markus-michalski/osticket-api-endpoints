@@ -16,13 +16,13 @@ RewriteRule ^tickets-delete\.php/ - [L]
 RewriteRule ^tickets-get\.php/ - [L]
 
 # Tickets Search API endpoint (no path parameter - uses query params + optional .xml/.json in PATH_INFO)
-RewriteRule ^tickets-search\.php - [L]
+RewriteRule ^tickets-search\.php.*$ - [L]
 
 # Tickets Stats API endpoint (no path parameter - optional .xml/.json in PATH_INFO)
-RewriteRule ^tickets-stats\.php - [L]
+RewriteRule ^tickets-stats\.php.*$ - [L]
 
 # Tickets Statuses API endpoint (no path parameter - optional .xml/.json in PATH_INFO)
-RewriteRule ^tickets-statuses\.php - [L]
+RewriteRule ^tickets-statuses\.php.*$ - [L]
 
 # Tickets Update API endpoint (path parameter: ticket number)
 RewriteRule ^tickets-update\.php/ - [L]
