@@ -158,14 +158,13 @@ class SubticketApiController extends ExtendedTicketApiController {
         }
 
         // Check if API key has department restrictions
-        // In real osTicket, this would be: $apiKey->getDepartments()
-        // For now, we assume API keys without explicit restrictions have full access
-        // This can be extended when department restrictions are added to API keys
+        if (method_exists($apiKey, 'hasRestrictedDepartments') && $apiKey->hasRestrictedDepartments()) {
+            $allowedDepartments = $apiKey->getRestrictedDepartments();
+            return in_array($ticketDeptId, $allowedDepartments);
+        }
 
-        // NOTE: In production osTicket, implement proper department access check here
-        // Example: return in_array($ticketDeptId, $apiKey->getDepartments());
-
-        return true; // Allow access for now (TODO: Implement proper department restrictions)
+        // No restrictions = full access
+        return true;
     }
 
     /**
@@ -349,6 +348,58 @@ class SubticketApiController extends ExtendedTicketApiController {
             'success' => true,
             'message' => 'Subticket relationship created successfully',
             'parent' => $this->formatTicketData($parentTicket),
+            'child' => $this->formatTicketData($childTicket),
+        ];
+    }
+
+    /**
+     * Remove parent-child relationship (unlink subticket)
+     *
+     * @param int $childId Child ticket ID
+     * @return array Success response with child data
+     * @throws Exception 400 - Invalid child ticket ID (ID must be > 0)
+     * @throws Exception 403 - API key not authorized (permission or department access)
+     * @throws Exception 404 - Child ticket not found or child has no parent
+     * @throws Exception 501 - Subticket Manager Plugin not available
+     */
+    public function unlinkChild(int $childId): array {
+        // 1. Validate child ticket ID
+        if ($childId <= 0) {
+            throw new Exception('Invalid child ticket ID', 400);
+        }
+
+        // 2. Permission check
+        $this->requireSubticketPermission();
+
+        // 3. Plugin check
+        if (!$this->isSubticketPluginAvailable()) {
+            throw new Exception('Subticket plugin not available', 501);
+        }
+
+        // 4. Child ticket lookup
+        $childTicket = Ticket::lookup($childId);
+        if (!$childTicket) {
+            throw new Exception('Child ticket not found', 404);
+        }
+
+        // 5. Department access check for child ticket
+        if (!$this->canAccessTicket($childTicket)) {
+            throw new Exception('Access denied to child ticket department', 403);
+        }
+
+        // 6. Check if child has a parent
+        $plugin = $this->getSubticketPlugin();
+        if (!$plugin->hasParent($childTicket)) {
+            throw new Exception('Child has no parent to unlink', 404);
+        }
+
+        // 7. Remove the link
+        $plugin->removeLink($childTicket);
+
+        // 8. Return success response with child data
+        return [
+            'success' => true,
+            'message' => 'Subticket relationship removed successfully',
             'child' => $this->formatTicketData($childTicket),
         ];
     }
