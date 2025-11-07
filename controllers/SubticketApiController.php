@@ -291,10 +291,13 @@ class SubticketApiController extends ExtendedTicketApiController {
         if ($existingParent) {
             // Check if it's the same parent (relationship already exists)
             if ((int)$existingParent['ticket_id'] === $parentTicket->getId()) {
-                throw new Exception('Subticket relationship already exists', 409);
+                // Note: Using HTTP 422 instead of 409 because osTicket's Http::response()
+                // doesn't support 409 and falls back to 500. HTTP 422 is semantically
+                // correct for "cannot process because duplicate relationship exists"
+                throw new Exception('Subticket relationship already exists', 422);
             }
             // Different parent exists
-            throw new Exception('Child ticket already has a different parent', 409);
+            throw new Exception('Child ticket already has a different parent', 422);
         }
 
         // 10. Create the link using linkTicket method

@@ -623,30 +623,6 @@ curl -X GET "https://stage.tickets.markus-michalski.net/api/tickets-search.php?q
 [1;33mResponse:[0m
 [
   {
-    "id": 71,
-    "number": "646707",
-    "subject": "Test Ticket",
-    "statusId": 1,
-    "status": "Offen",
-    "priorityId": 2,
-    "priority": "Normal",
-    "departmentId": 1,
-    "department": "Support",
-    "topicId": null,
-    "topic": null,
-    "created": "2025-11-07 18:52:14",
-    "updated": "2025-11-07 18:52:14",
-    "dueDate": null,
-    "staffId": null,
-    "staff": null,
-    "teamId": null,
-    "team": null,
-    "slaId": 1,
-    "sla": "Standard-SLA",
-    "isOverdue": 0,
-    "isAnswered": 0
-  },
-  {
     "id": 70,
     "number": "475503",
     "subject": "Test Ticket",
@@ -821,30 +797,6 @@ curl -X GET "https://stage.tickets.markus-michalski.net/api/tickets-search.php?s
 [1;33mResponse:[0m
 [
   {
-    "id": 71,
-    "number": "646707",
-    "subject": "Test Ticket",
-    "statusId": 1,
-    "status": "Offen",
-    "priorityId": 2,
-    "priority": "Normal",
-    "departmentId": 1,
-    "department": "Support",
-    "topicId": null,
-    "topic": null,
-    "created": "2025-11-07 18:52:14",
-    "updated": "2025-11-07 18:52:14",
-    "dueDate": null,
-    "staffId": null,
-    "staff": null,
-    "teamId": null,
-    "team": null,
-    "slaId": 1,
-    "sla": "Standard-SLA",
-    "isOverdue": 0,
-    "isAnswered": 0
-  },
-  {
     "id": 70,
     "number": "475503",
     "subject": "Test Ticket",
@@ -945,6 +897,37 @@ curl -X GET "https://stage.tickets.markus-michalski.net/api/tickets-search.php?s
     "slaId": 1,
     "sla": "Standard-SLA",
     "isOverdue": 0,
+    "isAnswered": 0
+  },
+  {
+    "id": 60,
+    "number": "490782",
+    "subject": "[Subtask] Template-System für häufige Anliegen",
+    "statusId": 1,
+    "status": "Offen",
+    "priorityId": 1,
+    "priority": "Niedrig",
+    "departmentId": 1,
+    "department": "Support",
+    "topicId": 2,
+    "topic": "Feedback",
+    "created": "2025-10-27 16:10:52",
+    "updated": "2025-11-03 14:36:34",
+    "dueDate": null,
+    "staffId": 1,
+    "staff": {
+      "format": "full",
+      "parts": {
+        "first": "Markus",
+        "last": "Michalski"
+      },
+      "name": "Markus Michalski"
+    },
+    "teamId": null,
+    "team": null,
+    "slaId": 1,
+    "sla": "Standard-SLA",
+    "isOverdue": 1,
     "isAnswered": 0
   }
 ]
@@ -957,30 +940,6 @@ curl -X GET "https://stage.tickets.markus-michalski.net/api/tickets-search.php?d
 [1;33mResponse:[0m
 [
   {
-    "id": 71,
-    "number": "646707",
-    "subject": "Test Ticket",
-    "statusId": 1,
-    "status": "Offen",
-    "priorityId": 2,
-    "priority": "Normal",
-    "departmentId": 1,
-    "department": "Support",
-    "topicId": null,
-    "topic": null,
-    "created": "2025-11-07 18:52:14",
-    "updated": "2025-11-07 18:52:14",
-    "dueDate": null,
-    "staffId": null,
-    "staff": null,
-    "teamId": null,
-    "team": null,
-    "slaId": 1,
-    "sla": "Standard-SLA",
-    "isOverdue": 0,
-    "isAnswered": 0
-  },
-  {
     "id": 70,
     "number": "475503",
     "subject": "Test Ticket",
@@ -1081,6 +1040,37 @@ curl -X GET "https://stage.tickets.markus-michalski.net/api/tickets-search.php?d
     "slaId": 1,
     "sla": "Standard-SLA",
     "isOverdue": 0,
+    "isAnswered": 0
+  },
+  {
+    "id": 60,
+    "number": "490782",
+    "subject": "[Subtask] Template-System für häufige Anliegen",
+    "statusId": 1,
+    "status": "Offen",
+    "priorityId": 1,
+    "priority": "Niedrig",
+    "departmentId": 1,
+    "department": "Support",
+    "topicId": 2,
+    "topic": "Feedback",
+    "created": "2025-10-27 16:10:52",
+    "updated": "2025-11-03 14:36:34",
+    "dueDate": null,
+    "staffId": 1,
+    "staff": {
+      "format": "full",
+      "parts": {
+        "first": "Markus",
+        "last": "Michalski"
+      },
+      "name": "Markus Michalski"
+    },
+    "teamId": null,
+    "team": null,
+    "slaId": 1,
+    "sla": "Standard-SLA",
+    "isOverdue": 1,
     "isAnswered": 0
   }
 ]
@@ -1132,7 +1122,7 @@ curl -X GET "https://stage.tickets.markus-michalski.net/api/tickets-search.php/.
 
 [1;33mResponse:[0m
 <?xml version="1.0"?>
-<result><tickets><item><id>71</id><number>646707</number><subject>Test Ticket</subject><statusId>1</statusId><status>Offen</status><priorityId>2</priorityId><priority>Normal</priority><departmentId>1</departmentId><department>Support</department><topicId/><topic/><created>2025-11-07 18:52:14</created><updated>2025-11-07 18:52:14</updated><dueDate/><staffId/><staff/><teamId/><team/><slaId>1</slaId><sla>Standard-SLA</sla><isOverdue>0</isOverdue><isAnswered>0</isAnswered></item><item><id>70</id><number>475503</number><subject>Test Ticket</subject><statusId>1</statusId><status>Offen</status><priorityId>2</priorityId><priority>Normal</priority><departmentId>1</departmentId><department>Support</department><topicId/><topic/><created>2025-11-07 18:52:12</created><updated>2025-11-07 18:52:12</updated><dueDate/><staffId/><staff/><teamId/><team/><slaId>1</slaId><sla>Standard-SLA</sla><isOverdue>0</isOverdue><isAnswered>0</isAnswered></item><item><id>69</id><number>960041</number><subject>Test Ticket</subject><statusId>1</statusId><status>Offen</status><priorityId>2</priorityId><priority>Normal</priority><departmentId>1</departmentId><department>Support</department><topicId/><topic/><created>2025-11-07 18:52:08</created><updated>2025-11-07 18:52:08</updated><dueDate/><staffId/><staff/><teamId/><team/><slaId>1</slaId><sla>Standard-SLA</sla><isOverdue>0</isOverdue><isAnswered>0</isAnswered></item><item><id>63</id><number>432791</number><subject>Test Ticket</subject><statusId>1</statusId><status>Offen</status><priorityId>2</priorityId><priority>Normal</priority><departmentId>1</departmentId><department>Support</department><topicId/><topic/><created>2025-11-07 14:17:43</created><updated>2025-11-07 14:17:43</updated><dueDate/><staffId/><staff/><teamId/><team/><slaId>1</slaId><sla>Standard-SLA</sla><isOverdue>0</isOverdue><isAnswered>0</isAnswered></item><item><id>61</id><number>698266</number><subject>TEST Child</subject><statusId>1</statusId><status>Offen</status><priorityId>1</priorityId><priority>Niedrig</priority><departmentId>1</departmentId><department>Support</department><topicId>2</topicId><topic>Feedback</topic><created>2025-11-03 14:38:31</created><updated>2025-11-03 14:38:31</updated><dueDate>2025-12-31 14:37:00</dueDate><staffId>1</staffId><staff>Markus Michalski</staff><teamId/><team/><slaId>1</slaId><sla>Standard-SLA</sla><isOverdue>0</isOverdue><isAnswered>0</isAnswered></item></tickets></result>
+<result><tickets><item><id>70</id><number>475503</number><subject>Test Ticket</subject><statusId>1</statusId><status>Offen</status><priorityId>2</priorityId><priority>Normal</priority><departmentId>1</departmentId><department>Support</department><topicId/><topic/><created>2025-11-07 18:52:12</created><updated>2025-11-07 18:52:12</updated><dueDate/><staffId/><staff/><teamId/><team/><slaId>1</slaId><sla>Standard-SLA</sla><isOverdue>0</isOverdue><isAnswered>0</isAnswered></item><item><id>69</id><number>960041</number><subject>Test Ticket</subject><statusId>1</statusId><status>Offen</status><priorityId>2</priorityId><priority>Normal</priority><departmentId>1</departmentId><department>Support</department><topicId/><topic/><created>2025-11-07 18:52:08</created><updated>2025-11-07 18:52:08</updated><dueDate/><staffId/><staff/><teamId/><team/><slaId>1</slaId><sla>Standard-SLA</sla><isOverdue>0</isOverdue><isAnswered>0</isAnswered></item><item><id>63</id><number>432791</number><subject>Test Ticket</subject><statusId>1</statusId><status>Offen</status><priorityId>2</priorityId><priority>Normal</priority><departmentId>1</departmentId><department>Support</department><topicId/><topic/><created>2025-11-07 14:17:43</created><updated>2025-11-07 14:17:43</updated><dueDate/><staffId/><staff/><teamId/><team/><slaId>1</slaId><sla>Standard-SLA</sla><isOverdue>0</isOverdue><isAnswered>0</isAnswered></item><item><id>61</id><number>698266</number><subject>TEST Child</subject><statusId>1</statusId><status>Offen</status><priorityId>1</priorityId><priority>Niedrig</priority><departmentId>1</departmentId><department>Support</department><topicId>2</topicId><topic>Feedback</topic><created>2025-11-03 14:38:31</created><updated>2025-11-03 14:38:31</updated><dueDate>2025-12-31 14:37:00</dueDate><staffId>1</staffId><staff>Markus Michalski</staff><teamId/><team/><slaId>1</slaId><sla>Standard-SLA</sla><isOverdue>0</isOverdue><isAnswered>0</isAnswered></item><item><id>36</id><number>240077</number><subject>Update-Test: PATCH-Endpoint</subject><statusId>3</statusId><status>Geschlossen</status><priorityId>2</priorityId><priority>Normal</priority><departmentId>2</departmentId><department>Development</department><topicId>1</topicId><topic>Feature</topic><created>2025-10-25 12:06:29</created><updated>2025-10-25 12:06:38</updated><dueDate/><staffId>1</staffId><staff>Markus Michalski</staff><teamId/><team/><slaId>1</slaId><sla>Standard-SLA</sla><isOverdue>0</isOverdue><isAnswered>0</isAnswered></item></tickets></result>
 
 
 
@@ -1205,8 +1195,8 @@ curl -X GET "https://stage.tickets.markus-michalski.net/api/tickets-stats.php/.j
 
 [1;33mResponse:[0m
 {
-  "total": 45,
-  "open": 33,
+  "total": 44,
+  "open": 32,
   "closed": 12,
   "overdue": 24,
   "by_department": {
@@ -1223,8 +1213,8 @@ curl -X GET "https://stage.tickets.markus-michalski.net/api/tickets-stats.php/.j
       "overdue": 0
     },
     "Support": {
-      "total": 28,
-      "open": 28,
+      "total": 27,
+      "open": 27,
       "closed": 0,
       "overdue": 23
     },
@@ -1280,7 +1270,7 @@ curl -X GET "https://stage.tickets.markus-michalski.net/api/tickets-stats.php/.x
 
 [1;33mResponse:[0m
 <?xml version="1.0"?>
-<stats><total>45</total><open>33</open><closed>12</closed><overdue>24</overdue><by_department><Claude Code><total>1</total><open>0</open><closed>1</closed><overdue>0</overdue></Claude Code><Development><total>4</total><open>0</open><closed>4</closed><overdue>0</overdue></Development><Support><total>28</total><open>28</open><closed>0</closed><overdue>23</overdue></Support><osTicket><total>12</total><open>5</open><closed>7</closed><overdue>1</overdue></osTicket></by_department><by_staff><item><staff_id>1</staff_id><staff_name>Markus Michalski</staff_name><total>41</total><departments><osTicket><open>5</open><closed>7</closed><overdue>1</overdue></osTicket><Support><open>24</open><closed>0</closed><overdue>23</overdue></Support><Claude Code><open>0</open><closed>1</closed><overdue>0</overdue></Claude Code><Development><open>0</open><closed>4</closed><overdue>0</overdue></Development></departments></item></by_staff></stats>
+<stats><total>44</total><open>32</open><closed>12</closed><overdue>24</overdue><by_department><Claude Code><total>1</total><open>0</open><closed>1</closed><overdue>0</overdue></Claude Code><Development><total>4</total><open>0</open><closed>4</closed><overdue>0</overdue></Development><Support><total>27</total><open>27</open><closed>0</closed><overdue>23</overdue></Support><osTicket><total>12</total><open>5</open><closed>7</closed><overdue>1</overdue></osTicket></by_department><by_staff><item><staff_id>1</staff_id><staff_name>Markus Michalski</staff_name><total>41</total><departments><osTicket><open>5</open><closed>7</closed><overdue>1</overdue></osTicket><Support><open>24</open><closed>0</closed><overdue>23</overdue></Support><Claude Code><open>0</open><closed>1</closed><overdue>0</overdue></Claude Code><Development><open>0</open><closed>4</closed><overdue>0</overdue></Development></departments></item></by_staff></stats>
 
 
 
@@ -1356,13 +1346,13 @@ curl -X GET "https://stage.tickets.markus-michalski.net/api/tickets-statuses.php
 [0;34m  6. LEGACY ENDPOINTS - tickets-delete.php[0m
 [0;34m===================================================================[0m
 
-[0;31mWARNING: This will DELETE ticket 646707![0m
+[0;31mWARNING: This will DELETE ticket 475503![0m
 [0;32m[TEST][0m 6.1 Delete Ticket
 [1;33mCommand:[0m
-curl -X DELETE "https://stage.tickets.markus-michalski.net/api/tickets-delete.php/646707.json"   -H "X-API-Key: CE206076F0B32E58AB3EBBF8CBD2DD29"   -s -w "\nHTTP Status: %{http_code}\n"
+curl -X DELETE "https://stage.tickets.markus-michalski.net/api/tickets-delete.php/475503.json"   -H "X-API-Key: CE206076F0B32E58AB3EBBF8CBD2DD29"   -s -w "\nHTTP Status: %{http_code}\n"
 
 [1;33mResponse:[0m
-646707
+475503
 HTTP Status: 200
 
 
@@ -1459,11 +1449,28 @@ curl -X GET "https://stage.tickets.markus-michalski.net/api/tickets-subtickets-l
 [0;34m  9. SUBTICKET ENDPOINTS - tickets-subtickets-create.php[0m
 [0;34m===================================================================[0m
 
+[SETUP] Removing any existing link between parent and child...
 [0;32m[TEST][0m 9.1 Create Subticket Link
 [1;33mCommand:[0m
 curl -X POST "https://stage.tickets.markus-michalski.net/api/tickets-subtickets-create.php/456846.json"   -H "X-API-Key: CE206076F0B32E58AB3EBBF8CBD2DD29"   -H "Content-Type: application/json"   -d '{"childId": 237948}'   -s | jq .
 
 [1;33mResponse:[0m
+{
+  "success": true,
+  "message": "Subticket relationship created successfully",
+  "parent": {
+    "ticket_id": 22,
+    "number": "456846",
+    "subject": "Plugin: Custom CSS Loader",
+    "status": "Offen"
+  },
+  "child": {
+    "ticket_id": 20,
+    "number": "237948",
+    "subject": "Plugin: Priority Icons (CSS/JS injection via Signals)",
+    "status": "Geschlossen"
+  }
+}
 
 
 [0;32m[TEST][0m 9.2 Create Subticket Link (Already Linked - 409 Error)

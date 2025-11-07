@@ -20,7 +20,7 @@ BASE_URL="https://stage.tickets.markus-michalski.net/api"  # Direct API access
 PARENT_TICKET="456846"   # Existing ticket to use as parent
 CHILD_TICKET="237948"    # Existing ticket to use as child
 TICKET_TO_UPDATE="237948" # Existing ticket for update tests
-TICKET_TO_DELETE="646707" # Existing ticket for delete tests (WARNING: will be deleted!)
+TICKET_TO_DELETE="960041" # Existing ticket for delete tests (WARNING: will be deleted!)
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -246,7 +246,7 @@ run_curl "curl -X POST \"${BASE_URL}/tickets-subtickets-create.php/${PARENT_TICK
   -d '{\"childId\": ${CHILD_TICKET}}' \
   -s | jq ."
 
-test_header "9.2 Create Subticket Link (Already Linked - 409 Error)"
+test_header "9.2 Create Subticket Link (Already Linked - 422 Error)"
 run_curl "curl -X POST \"${BASE_URL}/tickets-subtickets-create.php/${PARENT_TICKET}.json\" \
   -H \"X-API-Key: ${API_KEY}\" \
   -H \"Content-Type: application/json\" \
