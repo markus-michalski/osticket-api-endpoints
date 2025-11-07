@@ -56,30 +56,11 @@ class ApiEndpointsConfig extends PluginConfig {
             'endpoints_info' => new FreeTextField(array(
                 'id' => 'endpoints_info',
                 'label' => '',
+                'required' => false,
+                'default' => '',
                 'configuration' => array(
                     'html' => true,
-                    'content' => '<div style="background: #f5f5f5; padding: 15px; border-left: 4px solid #2196F3; margin: 10px 0;">
-                        <p style="margin: 0 0 10px 0;"><strong>The following API endpoints are available:</strong></p>
-                        <ul style="margin: 5px 0; padding-left: 20px; list-style: none;">
-                            <li style="margin: 5px 0;">✓ <strong>POST /tickets</strong> - Create tickets with format (markdown/html/text) and department<br>
-                               <span style="color: #666; font-size: 11px;">Controlled by: <code>can_create_tickets</code> permission</span></li>
-                            <li style="margin: 5px 0;">✓ <strong>PATCH/PUT /tickets/:id</strong> - Update tickets (department, topic, parent, priority, status, SLA, staff)<br>
-                               <span style="color: #666; font-size: 11px;">Controlled by: <code>can_update_tickets</code> permission</span></li>
-                            <li style="margin: 5px 0;">✓ <strong>GET /tickets-get.php/:number</strong> - Retrieve ticket by number with full details and thread<br>
-                               <span style="color: #666; font-size: 11px;">Controlled by: <code>can_read_tickets</code> permission</span></li>
-                            <li style="margin: 5px 0;">✓ <strong>GET /tickets-search.php</strong> - Search tickets by query, status, department with pagination<br>
-                               <span style="color: #666; font-size: 11px;">Controlled by: <code>can_search_tickets</code> permission</span></li>
-                            <li style="margin: 5px 0;">✓ <strong>DELETE /tickets-delete.php/:number</strong> - Delete tickets with cascading cleanup<br>
-                               <span style="color: #666; font-size: 11px;">Controlled by: <code>can_delete_tickets</code> permission</span></li>
-                            <li style="margin: 5px 0;">✓ <strong>GET /tickets-stats.php</strong> - Retrieve ticket statistics for dashboards and reporting<br>
-                               <span style="color: #666; font-size: 11px;">Controlled by: <code>can_read_stats</code> permission</span></li>
-                            <li style="margin: 5px 0;">✓ <strong>Subticket Operations</strong> - Manage parent-child ticket relationships (get parent, list children, create/unlink)<br>
-                               <span style="color: #666; font-size: 11px;">Controlled by: <code>can_manage_subtickets</code> permission (requires Subticket Manager Plugin)</span></li>
-                        </ul>
-                        <p style="margin: 15px 0 0 0; padding: 10px; background: #fff3e0; border-left: 3px solid #ff9800; font-size: 13px;">
-                            <strong>⚠ Important:</strong> Access to these endpoints is controlled individually per API Key using the permissions below.
-                        </p>
-                    </div>'
+                    'content' => '<div style="background: #f5f5f5; padding: 15px; border-left: 4px solid #2196F3; margin: 10px 0;"><p style="margin: 0 0 10px 0;"><strong>The following API endpoints are available:</strong></p><ul style="margin: 5px 0; padding-left: 20px; list-style: none;"><li style="margin: 5px 0;">✓ <strong>POST /tickets</strong> - Create tickets with format (markdown/html/text) and department<br><span style="color: #666; font-size: 11px;">Controlled by: <code>can_create_tickets</code> permission</span></li><li style="margin: 5px 0;">✓ <strong>PATCH/PUT /tickets/:id</strong> - Update tickets (department, topic, parent, priority, status, SLA, staff)<br><span style="color: #666; font-size: 11px;">Controlled by: <code>can_update_tickets</code> permission</span></li><li style="margin: 5px 0;">✓ <strong>GET /tickets-get.php/:number</strong> - Retrieve ticket by number with full details and thread<br><span style="color: #666; font-size: 11px;">Controlled by: <code>can_read_tickets</code> permission</span></li><li style="margin: 5px 0;">✓ <strong>GET /tickets-search.php</strong> - Search tickets by query, status, department with pagination<br><span style="color: #666; font-size: 11px;">Controlled by: <code>can_search_tickets</code> permission</span></li><li style="margin: 5px 0;">✓ <strong>DELETE /tickets-delete.php/:number</strong> - Delete tickets with cascading cleanup<br><span style="color: #666; font-size: 11px;">Controlled by: <code>can_delete_tickets</code> permission</span></li><li style="margin: 5px 0;">✓ <strong>GET /tickets-stats.php</strong> - Retrieve ticket statistics for dashboards and reporting<br><span style="color: #666; font-size: 11px;">Controlled by: <code>can_read_stats</code> permission</span></li><li style="margin: 5px 0;">✓ <strong>Subticket Operations</strong> - Manage parent-child ticket relationships (get parent, list children, create/unlink)<br><span style="color: #666; font-size: 11px;">Controlled by: <code>can_manage_subtickets</code> permission (requires Subticket Manager Plugin)</span></li></ul><p style="margin: 15px 0 0 0; padding: 10px; background: #fff3e0; border-left: 3px solid #ff9800; font-size: 13px;"><strong>⚠ Important:</strong> Access to these endpoints is controlled individually per API Key using the permissions below.</p></div>'
                 )
             )),
 
@@ -291,32 +272,8 @@ class ApiEndpointsConfig extends PluginConfig {
             }
         }
 
-        // Validate that at least one endpoint is enabled if plugin is enabled
-        $enabled = isset($config['enabled']) ? $config['enabled'] : $this->get('enabled');
-        $endpoint_create = isset($config['endpoint_create_ticket'])
-            ? $config['endpoint_create_ticket']
-            : $this->get('endpoint_create_ticket');
-
-        if ($enabled && !$endpoint_create) {
-            // Check if any future endpoint is enabled
-            $has_active_endpoint = false;
-            $future_endpoints = ['endpoint_get_ticket', 'endpoint_update_ticket',
-                'endpoint_search_tickets', 'endpoint_delete_ticket', 'endpoint_ticket_stats'];
-
-            foreach ($future_endpoints as $ep) {
-                $ep_val = isset($config[$ep]) ? $config[$ep] : $this->get($ep);
-                if ($ep_val) {
-                    $has_active_endpoint = true;
-                    break;
-                }
-            }
-
-            if (!$has_active_endpoint) {
-                $errors['endpoint_create_ticket'] = 'At least one endpoint must be enabled';
-                return false;
-            }
-        }
-
+        // No validation needed - endpoints are always available when plugin is enabled
+        // Access control is managed via API Key Permissions (not global enable/disable)
         return true;
     }
 
