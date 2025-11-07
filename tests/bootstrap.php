@@ -192,7 +192,7 @@ if (!class_exists('Ticket')) {
         private $customData;
 
         public function __construct($data) {
-            $this->id = $data['id'];
+            $this->id = $data['ticket_id'] ?? $data['id'];
             $this->number = $data['number'];
             $this->subject = $data['subject'] ?? 'Test Ticket';
             $this->deptId = $data['dept_id'] ?? 1;
@@ -346,13 +346,17 @@ if (!class_exists('Ticket')) {
 if (!class_exists('API')) {
     class API {
         public static $mockData = [];
+        private $id;
         private $key;
         private $permissions = [];
+        private $restrictedDepartments = [];
         public $ht = []; // Match osTicket's API class structure
 
         public function __construct($data) {
+            $this->id = $data['id'] ?? null;
             $this->key = $data['key'];
             $this->permissions = $data['permissions'] ?? [];
+            $this->restrictedDepartments = $data['restricted_departments'] ?? [];
 
             // Store permissions in ht array to match real osTicket API class
             // Check both $data and $this->permissions for consistency
@@ -372,9 +376,16 @@ if (!class_exists('API')) {
             return self::$mockData[$key] ?? null;
         }
 
+        public function getId() { return $this->id; }
         public function getKey() { return $this->key; }
         public function canCreateTickets() {
             return $this->permissions['can_create_tickets'] ?? false;
+        }
+        public function getRestrictedDepartments() {
+            return $this->restrictedDepartments;
+        }
+        public function hasRestrictedDepartments() {
+            return !empty($this->restrictedDepartments);
         }
     }
 }
@@ -640,3 +651,10 @@ spl_autoload_register(function ($class) {
         require $file;
     }
 });
+
+// Load test fixtures
+require_once __DIR__ . '/fixtures/SubticketTestDataFactory.php';
+
+// Load controller classes
+require_once __DIR__ . '/../controllers/ExtendedTicketApiController.php';
+require_once __DIR__ . '/../controllers/SubticketApiController.php';
