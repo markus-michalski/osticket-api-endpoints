@@ -30,9 +30,21 @@ require_once(INCLUDE_DIR.'class.ticket.php');
 $plugin_path = INCLUDE_DIR.'plugins/api-endpoints/';
 if (file_exists($plugin_path.'controllers/ExtendedTicketApiController.php')) {
     require_once($plugin_path.'controllers/ExtendedTicketApiController.php');
+    require_once($plugin_path.'lib/XmlHelper.php');
 } else {
     Http::response(500, 'API Endpoints Plugin not properly installed', 'text/plain');
     exit;
+}
+
+// Parse path info to get format
+// URL: /api/tickets-statuses.php -> path_info = empty
+// URL: /api/tickets-statuses.php.json -> path_info = .json
+$path_info = Osticket::get_path_info();
+
+// Extract format (default: json)
+$format = 'json';
+if (preg_match('#\.(?P<format>json|xml)$#', $path_info, $matches)) {
+    $format = $matches['format'];
 }
 
 // Only accept GET method
@@ -47,8 +59,14 @@ try {
     $controller = new ExtendedTicketApiController(null);
     $statuses = $controller->getTicketStatuses();
 
-    // Return statuses as JSON
-    Http::response(200, json_encode($statuses, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE), 'application/json');
+    // Return success with statuses
+    if ($format === 'json') {
+        Http::response(200, json_encode($statuses, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE), 'application/json');
+    } else {
+        // XML format
+        $xml = XmlHelper::arrayToXml(array('statuses' => $statuses), 'result');
+        Http::response(200, $xml, 'application/xml');
+    }
 
 } catch (Exception $e) {
     // Handle errors
