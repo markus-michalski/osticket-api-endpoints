@@ -158,21 +158,27 @@ class SubticketApiController extends ExtendedTicketApiController {
         $plugin = PluginManager::lookup('subticket');
 
         try {
-            $parentTicket = $plugin ? $plugin->getParent($childTicket) : null;
+            $parentData = $plugin ? $plugin->getParent($childTicket->getId()) : null;
         } catch (Exception $e) {
             // Plugin may throw exception if no parent exists
             // Treat as "no parent" instead of error
-            $parentTicket = null;
+            $parentData = null;
         }
 
         // 5. Return result
-        if (!$parentTicket) {
+        if (!$parentData) {
             return ['parent' => null];
         }
 
-        // 6. Format parent ticket data using helper method
+        // 6. Format parent ticket data - getParent returns array with keys:
+        // ticket_id, number, subject, status
         return [
-            'parent' => $this->formatTicketData($parentTicket)
+            'parent' => [
+                'ticket_id' => (int)$parentData['ticket_id'],
+                'number' => $parentData['number'],
+                'subject' => $parentData['subject'],
+                'status' => $parentData['status']
+            ]
         ];
     }
 
@@ -203,7 +209,7 @@ class SubticketApiController extends ExtendedTicketApiController {
         // 4. Get children via subticket plugin
         // Note: User is responsible for having the plugin installed
         $plugin = PluginManager::lookup('subticket');
-        $childIds = $plugin ? $plugin->getChildren($parentTicket) : [];
+        $childIds = $plugin ? $plugin->getChildren($parentTicket->getId()) : [];
 
         // 5. Return empty array if no children
         if (empty($childIds)) {
@@ -281,20 +287,26 @@ class SubticketApiController extends ExtendedTicketApiController {
         // 9. Check if child already has a parent
         // Note: User is responsible for having the plugin installed
         $plugin = PluginManager::lookup('subticket');
-        $existingParent = $plugin ? $plugin->getParent($childTicket) : null;
+        $existingParent = $plugin ? $plugin->getParent($childTicket->getId()) : null;
 
         if ($existingParent) {
             // Check if it's the same parent (relationship already exists)
-            if ($existingParent->getId() === $parentTicket->getId()) {
+            if ((int)$existingParent['ticket_id'] === $parentTicket->getId()) {
                 throw new Exception('Subticket relationship already exists', 409);
             }
             // Different parent exists
             throw new Exception('Child ticket already has a different parent', 409);
         }
 
-        // 10. Create the link
-        if ($plugin) {
-            $plugin->createLink($parentTicket, $childTicket);
+        // 10. Create the link using linkTicket method
+        if (!$plugin) {
+            throw new Exception('Subticket Manager Plugin not found', 500);
+        }
+
+        $success = $plugin->linkTicket($childTicket->getId(), $parentTicket->getId());
+
+        if (!$success) {
+            throw new Exception('Failed to create subticket relationship', 500);
         }
 
         // 11. Return success response with parent and child data
@@ -338,7 +350,12 @@ class SubticketApiController extends ExtendedTicketApiController {
         // 5. Check if child has a parent
         // Note: User is responsible for having the plugin installed
         $plugin = PluginManager::lookup('subticket');
-        if (!$plugin || !$plugin->hasParent($childTicket)) {
+        if (!$plugin) {
+            throw new Exception('Subticket Manager Plugin not found', 500);
+        }
+
+        $existingParent = $plugin->getParent($childTicket->getId());
+        if (!$existingParent) {
             throw new Exception('Child has no parent to unlink', 404);
         }
 
