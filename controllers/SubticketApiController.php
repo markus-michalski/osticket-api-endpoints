@@ -209,25 +209,24 @@ class SubticketApiController extends ExtendedTicketApiController {
         // 4. Get children via subticket plugin
         // Note: User is responsible for having the plugin installed
         $plugin = $this->getSubticketPlugin();
-        $childIds = $plugin->getChildren($parentTicket->getId());
+        $childrenData = $plugin->getChildren($parentTicket->getId());
 
         // 5. Return empty array if no children
-        if (empty($childIds)) {
+        if (empty($childrenData)) {
             return ['children' => []];
         }
 
-        // 6. Iterate over child IDs and build result array
-        // Optimized: Use array_values + array_filter to remove orphaned references
-        $children = array_values(array_filter(array_map(function($childId) {
-            $childTicket = Ticket::lookup($childId);
-
-            // Skip orphaned references
-            if (!$childTicket) {
-                return null;
-            }
-
-            return $this->formatTicketData($childTicket);
-        }, $childIds)));
+        // 6. Format children data - getChildren() returns array with keys:
+        // id, number, subject, status, created
+        // Convert 'id' to 'ticket_id' to match our API format
+        $children = array_map(function($child) {
+            return [
+                'ticket_id' => (int)$child['id'],
+                'number' => $child['number'],
+                'subject' => $child['subject'],
+                'status' => $child['status']
+            ];
+        }, $childrenData);
 
         return ['children' => $children];
     }

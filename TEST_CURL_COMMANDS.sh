@@ -20,7 +20,7 @@ BASE_URL="https://stage.tickets.markus-michalski.net/api"  # Direct API access
 PARENT_TICKET="456846"   # Existing ticket to use as parent
 CHILD_TICKET="237948"    # Existing ticket to use as child
 TICKET_TO_UPDATE="237948" # Existing ticket for update tests
-TICKET_TO_DELETE="197101" # Existing ticket for delete tests (WARNING: will be deleted!)
+TICKET_TO_DELETE="375547" # Existing ticket for delete tests (WARNING: will be deleted!)
 
 # Colors for output
 GREEN='\033[0;32m'
