@@ -125,7 +125,7 @@ class SubticketPermissionTest extends TestCase {
      */
     public function testReturnsFalseWhenPluginNotAvailable(): void {
         // Arrange: NO plugin registered (clean state)
-        PluginManager::getInstance()->registerPlugin('subticket', null);
+        SubticketPlugin::$mockEnabled = false;
 
         // Act: Check plugin availability
         $controller = $this->createSubticketController();
@@ -245,7 +245,7 @@ class SubticketPermissionTest extends TestCase {
         API::$mockData['test-key-with-permission'] = $apiKey;
 
         // Arrange: NO plugin available
-        PluginManager::getInstance()->registerPlugin('subticket', null);
+        SubticketPlugin::$mockEnabled = false;
 
         // Act: Combined check
         $controller = $this->createSubticketController();

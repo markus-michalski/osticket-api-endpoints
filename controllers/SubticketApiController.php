@@ -384,12 +384,16 @@ class SubticketApiController extends ExtendedTicketApiController {
      * @throws Exception 500 - Subticket Manager Plugin not found or not loaded
      */
     private function getSubticketPlugin() {
-        // Direct instantiation like in ajax-subticket.php
-        if (!class_exists('SubticketPlugin')) {
+        // Try to instantiate plugin - throws exception if not available
+        try {
+            if (!class_exists('SubticketPlugin')) {
+                throw new Exception('Subticket plugin not available', 501);
+            }
+            return new SubticketPlugin();
+        } catch (Exception $e) {
+            // Re-throw with consistent message and code
             throw new Exception('Subticket plugin not available', 501);
         }
-
-        return new SubticketPlugin();
     }
 
     /**

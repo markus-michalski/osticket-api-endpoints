@@ -637,6 +637,21 @@ if (!class_exists('Signal')) {
 if (!class_exists('SubticketPlugin')) {
     class SubticketPlugin {
         /**
+         * Static flag to simulate plugin availability
+         * Set to false in tests to simulate missing/inactive plugin
+         */
+        public static $mockEnabled = true;
+
+        /**
+         * Constructor - throws exception if plugin is disabled
+         */
+        public function __construct() {
+            if (!self::$mockEnabled) {
+                throw new Exception('Subticket plugin not available', 501);
+            }
+        }
+
+        /**
          * Get parent ticket for a child
          *
          * @param int $childId Child ticket ID (internal ID, not number!)

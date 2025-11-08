@@ -47,6 +47,7 @@ class CreateSubticketLinkTest extends TestCase {
         Ticket::$mockData = [];
         Ticket::$mockDataByNumber = [];
         TicketStatus::$mockData = [];
+        SubticketPlugin::$mockEnabled = true;
     }
 
     protected function tearDown(): void {
@@ -57,6 +58,7 @@ class CreateSubticketLinkTest extends TestCase {
         Ticket::$mockData = [];
         Ticket::$mockDataByNumber = [];
         TicketStatus::$mockData = [];
+        SubticketPlugin::$mockEnabled = true;
     }
 
     /**
@@ -385,7 +387,7 @@ class CreateSubticketLinkTest extends TestCase {
         $apiKey = $this->createApiKeyWithPermission();
 
         // Arrange: NO plugin available
-        PluginManager::getInstance()->registerPlugin('subticket', null);
+        SubticketPlugin::$mockEnabled = false;
 
         // Expect Exception
         $this->expectException(Exception::class);

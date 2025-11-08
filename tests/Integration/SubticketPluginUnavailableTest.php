@@ -39,8 +39,8 @@ class SubticketPluginUnavailableTest extends PHPUnit\Framework\TestCase {
         // Create API key WITH permission (permission OK, plugin NOT OK)
         $this->apiKey = SubticketTestDataFactory::createApiKeyWithPermission();
 
-        // Register NULL plugin (not available)
-        PluginManager::getInstance()->registerPlugin('subticket', null);
+        // Disable plugin mock (simulate plugin not available)
+        SubticketPlugin::$mockEnabled = false;
 
         // Create controller
         $this->controller = new SubticketApiController();
@@ -59,8 +59,8 @@ class SubticketPluginUnavailableTest extends PHPUnit\Framework\TestCase {
         Ticket::$mockDataByNumber = [];
         TicketStatus::$mockData = [];
 
-        // Reset plugin registry
-        PluginManager::getInstance()->registerPlugin('subticket', null);
+        // Re-enable plugin mock for other tests
+        SubticketPlugin::$mockEnabled = true;
     }
 
     /**
