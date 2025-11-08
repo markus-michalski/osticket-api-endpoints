@@ -1,0 +1,110 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        php-version: ['7.4', '8.0', '8.1', '8.2', '8.3']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP ${{ matrix.php-version }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: mbstring, json
+          coverage: none
+
+      - name: Validate composer.json
+        run: composer validate --strict
+
+      - name: Install Composer Dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: PHP Syntax Check
+        run: |
+          echo "Checking PHP syntax..."
+          find . -name "*.php" ! -path "./vendor/*" -print0 | while IFS= read -r -d '' file; do
+            echo "Checking: $file"
+            php -l "$file"
+          done
+
+      - name: Run PHPUnit Tests
+        run: vendor/bin/phpunit --testdox
+
+  package-validation:
+    name: Package Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify Required Files
+        run: |
+          echo "Verifying plugin structure..."
+          test -f plugin.php || { echo "Error: plugin.php not found"; exit 1; }
+          test -f config.php || { echo "Error: config.php not found"; exit 1; }
+          test -f README.md || { echo "Error: README.md not found"; exit 1; }
+          test -f CHANGELOG.md || { echo "Error: CHANGELOG.md not found"; exit 1; }
+          test -f LICENSE || { echo "Error: LICENSE not found"; exit 1; }
+          test -f composer.json || { echo "Error: composer.json not found"; exit 1; }
+          test -f .releaseinclude || { echo "Error: .releaseinclude not found"; exit 1; }
+          test -f class.ApiEndpointsPlugin.php || { echo "Error: Main plugin class not found"; exit 1; }
+          test -d api || { echo "Error: api/ directory not found"; exit 1; }
+          test -d controllers || { echo "Error: controllers/ directory not found"; exit 1; }
+          test -d lib || { echo "Error: lib/ directory not found"; exit 1; }
+          test -d tests || { echo "Error: tests/ directory not found"; exit 1; }
+          test -d vendor || echo "Warning: vendor/ not committed (expected, will be built on install)"
+          echo "✓ All required files present"
+
+      - name: Verify CHANGELOG format
+        run: |
+          echo "Checking CHANGELOG.md format..."
+          grep -q "## \[Unreleased\]" CHANGELOG.md || { echo "Error: [Unreleased] section missing"; exit 1; }
+          echo "✓ CHANGELOG format valid"
+
+      - name: Check plugin.php metadata
+        run: |
+          echo "Checking plugin.php metadata..."
+          grep -q "'id'" plugin.php || { echo "Error: Plugin ID not found"; exit 1; }
+          grep -q "class.ApiEndpointsPlugin.php" plugin.php || { echo "Error: Plugin class reference not found"; exit 1; }
+          echo "✓ Plugin metadata valid"
+
+      - name: Verify API Endpoints
+        run: |
+          echo "Checking API endpoint files..."
+          test -f api/tickets-get.php || { echo "Error: tickets-get.php not found"; exit 1; }
+          test -f api/tickets-update.php || { echo "Error: tickets-update.php not found"; exit 1; }
+          test -f api/tickets-delete.php || { echo "Error: tickets-delete.php not found"; exit 1; }
+          test -f api/tickets-search.php || { echo "Error: tickets-search.php not found"; exit 1; }
+          test -f api/tickets-stats.php || { echo "Error: tickets-stats.php not found"; exit 1; }
+          test -f api/tickets-subtickets-parent.php || { echo "Error: subticket parent endpoint not found"; exit 1; }
+          test -f api/tickets-subtickets-list.php || { echo "Error: subticket list endpoint not found"; exit 1; }
+          test -f api/tickets-subtickets-create.php || { echo "Error: subticket create endpoint not found"; exit 1; }
+          test -f api/tickets-subtickets-unlink.php || { echo "Error: subticket unlink endpoint not found"; exit 1; }
+          echo "✓ All API endpoints present"
+
+      - name: Verify Controllers
+        run: |
+          echo "Checking controller files..."
+          test -f controllers/ExtendedTicketApiController.php || { echo "Error: ExtendedTicketApiController not found"; exit 1; }
+          test -f controllers/SubticketApiController.php || { echo "Error: SubticketApiController not found"; exit 1; }
+          echo "✓ All controllers present"
+
+      - name: Verify Library Files
+        run: |
+          echo "Checking library files..."
+          test -f lib/XmlHelper.php || { echo "Error: XmlHelper not found"; exit 1; }
+          echo "✓ All library files present"
