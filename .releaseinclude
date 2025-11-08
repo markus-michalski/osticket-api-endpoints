@@ -10,10 +10,15 @@ htaccess.template
 # Controllers
 controllers/
 controllers/ExtendedTicketApiController.php
+controllers/SubticketApiController.php
 
 # Libraries
 lib/
 lib/XmlHelper.php
+
+# Assets
+assets/
+assets/admin-apikey-extension.js
 
 # API files (legacy endpoints)
 api/
@@ -34,4 +39,3 @@ api/tickets-subtickets-unlink.php
 README.md
 CHANGELOG.md
 LICENSE
-api_endpoint_description.md

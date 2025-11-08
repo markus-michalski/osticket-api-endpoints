@@ -821,13 +821,12 @@ class ExtendedTicketApiController extends TicketApiController {
                 }
             }
 
-            // Log deletion attempt for audit trail
+            // Log deletion attempt for audit trail (without API key for security)
             error_log(sprintf(
-                '[API-ENDPOINTS-INFO] Deleting ticket #%s (ID: %d, Subject: "%s") via API key: %s',
+                '[API-ENDPOINTS-INFO] Deleting ticket #%s (ID: %d, Subject: "%s") via API',
                 $ticketNumberToReturn,
                 $ticketId,
-                $ticketSubject,
-                $key->getKey()
+                $ticketSubject
             ));
 
             // Delete ticket using osTicket's delete() method
@@ -838,12 +837,11 @@ class ExtendedTicketApiController extends TicketApiController {
             // - Deleting the ticket itself
             $ticket->delete();
 
-            // Log successful deletion for audit trail
+            // Log successful deletion for audit trail (without API key for security)
             error_log(sprintf(
-                '[API-ENDPOINTS-INFO] Successfully deleted ticket #%s (ID: %d) via API key: %s',
+                '[API-ENDPOINTS-INFO] Successfully deleted ticket #%s (ID: %d) via API',
                 $ticketNumberToReturn,
-                $ticketId,
-                $key->getKey()
+                $ticketId
             ));
 
             // REFACTOR PHASE: Always return ticket NUMBER for consistency
