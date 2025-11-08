@@ -140,22 +140,24 @@ class SubticketApiController extends ExtendedTicketApiController {
      */
     public function getParent(string $childNumber): array {
         // 1. Validate ticket number
-        if (empty($childNumber)) {
+        if (empty($childNumber) || $childNumber === '0') {
             throw new Exception('Invalid ticket number', 400);
         }
 
         // 2. Permission check
         $this->requireSubticketPermission();
 
-        // 3. Child ticket lookup by number
-        $childTicket = Ticket::lookupByNumber($childNumber);
-        if (!$childTicket) {
-            throw new Exception('Ticket not found', 404);
-        }
-
-        // 4. Get parent via subticket plugin
+        // 3. Plugin availability check (before ticket lookup)
         // Note: User is responsible for having the plugin installed
         $plugin = $this->getSubticketPlugin();
+
+        // 4. Child ticket lookup by number
+        $childTicket = Ticket::lookupByNumber($childNumber);
+        if (!$childTicket) {
+            throw new Exception('Child ticket not found', 404);
+        }
+
+        // 5. Get parent via subticket plugin
 
         try {
             $parentData = $plugin->getParent($childTicket->getId());
@@ -193,22 +195,24 @@ class SubticketApiController extends ExtendedTicketApiController {
      */
     public function getList(string $parentNumber): array {
         // 1. Validate ticket number
-        if (empty($parentNumber)) {
+        if (empty($parentNumber) || $parentNumber === '0') {
             throw new Exception('Invalid ticket number', 400);
         }
 
         // 2. Permission check
         $this->requireSubticketPermission();
 
-        // 3. Parent ticket lookup by number
-        $parentTicket = Ticket::lookupByNumber($parentNumber);
-        if (!$parentTicket) {
-            throw new Exception('Ticket not found', 404);
-        }
-
-        // 4. Get children via subticket plugin
+        // 3. Plugin availability check (before ticket lookup)
         // Note: User is responsible for having the plugin installed
         $plugin = $this->getSubticketPlugin();
+
+        // 4. Parent ticket lookup by number
+        $parentTicket = Ticket::lookupByNumber($parentNumber);
+        if (!$parentTicket) {
+            throw new Exception('Parent ticket not found', 404);
+        }
+
+        // 5. Get children via subticket plugin
         $childrenData = $plugin->getChildren($parentTicket->getId());
 
         // 5. Return empty array if no children
@@ -244,12 +248,12 @@ class SubticketApiController extends ExtendedTicketApiController {
      */
     public function createLink(string $parentNumber, string $childNumber): array {
         // 1. Validate parent ticket number
-        if (empty($parentNumber)) {
+        if (empty($parentNumber) || $parentNumber === '0') {
             throw new Exception('Invalid parent ticket number', 400);
         }
 
         // 2. Validate child ticket number
-        if (empty($childNumber)) {
+        if (empty($childNumber) || $childNumber === '0') {
             throw new Exception('Invalid child ticket number', 400);
         }
 
@@ -261,31 +265,33 @@ class SubticketApiController extends ExtendedTicketApiController {
         // 4. Permission check
         $this->requireSubticketPermission();
 
-        // 5. Parent ticket lookup by number
+        // 5. Plugin availability check (before ticket lookup)
+        // Note: User is responsible for having the plugin installed
+        $plugin = $this->getSubticketPlugin();
+
+        // 6. Parent ticket lookup by number
         $parentTicket = Ticket::lookupByNumber($parentNumber);
         if (!$parentTicket) {
             throw new Exception('Parent ticket not found', 404);
         }
 
-        // 6. Child ticket lookup by number
+        // 7. Child ticket lookup by number
         $childTicket = Ticket::lookupByNumber($childNumber);
         if (!$childTicket) {
             throw new Exception('Child ticket not found', 404);
         }
 
-        // 7. Department access check for parent ticket
+        // 8. Department access check for parent ticket
         if (!$this->canAccessTicket($parentTicket)) {
             throw new Exception('Access denied to parent ticket department', 403);
         }
 
-        // 8. Department access check for child ticket
+        // 9. Department access check for child ticket
         if (!$this->canAccessTicket($childTicket)) {
             throw new Exception('Access denied to child ticket department', 403);
         }
 
-        // 9. Check if child already has a parent
-        // Note: User is responsible for having the plugin installed
-        $plugin = $this->getSubticketPlugin();
+        // 10. Check if child already has a parent
         $existingParent = $plugin->getParent($childTicket->getId());
 
         if ($existingParent) {
@@ -327,27 +333,29 @@ class SubticketApiController extends ExtendedTicketApiController {
      */
     public function unlinkChild(string $childNumber): array {
         // 1. Validate child ticket number
-        if (empty($childNumber)) {
+        if (empty($childNumber) || $childNumber === '0') {
             throw new Exception('Invalid child ticket number', 400);
         }
 
         // 2. Permission check
         $this->requireSubticketPermission();
 
-        // 3. Child ticket lookup by number
+        // 3. Plugin availability check (before ticket lookup)
+        // Note: User is responsible for having the plugin installed
+        $plugin = $this->getSubticketPlugin();
+
+        // 4. Child ticket lookup by number
         $childTicket = Ticket::lookupByNumber($childNumber);
         if (!$childTicket) {
             throw new Exception('Child ticket not found', 404);
         }
 
-        // 4. Department access check for child ticket
+        // 5. Department access check for child ticket
         if (!$this->canAccessTicket($childTicket)) {
             throw new Exception('Access denied to child ticket department', 403);
         }
 
-        // 5. Check if child has a parent
-        // Note: User is responsible for having the plugin installed
-        $plugin = $this->getSubticketPlugin();
+        // 6. Check if child has a parent
 
         $existingParent = $plugin->getParent($childTicket->getId());
         if (!$existingParent) {
@@ -378,10 +386,35 @@ class SubticketApiController extends ExtendedTicketApiController {
     private function getSubticketPlugin() {
         // Direct instantiation like in ajax-subticket.php
         if (!class_exists('SubticketPlugin')) {
-            throw new Exception('Subticket Manager Plugin not found', 500);
+            throw new Exception('Subticket plugin not available', 501);
         }
 
         return new SubticketPlugin();
+    }
+
+    /**
+     * Check if Subticket Manager Plugin is available
+     *
+     * @return bool True if plugin is available and can be instantiated
+     */
+    public function isSubticketPluginAvailable(): bool {
+        try {
+            $this->getSubticketPlugin();
+            return true;
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Check if API key can use subticket operations
+     *
+     * Combines permission check AND plugin availability check
+     *
+     * @return bool True if both conditions are met
+     */
+    public function canUseSubtickets(): bool {
+        return $this->hasSubticketPermission() && $this->isSubticketPluginAvailable();
     }
 
     /**

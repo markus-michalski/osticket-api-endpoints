@@ -224,6 +224,11 @@ if (!class_exists('Ticket')) {
             $this->userName = $data['user_name'] ?? 'Test User';
             $this->userEmail = $data['user_email'] ?? 'test@example.com';
             $this->customData = $data['custom_data'] ?? null;
+
+            // Auto-register in mockDataByNumber for lookupByNumber() support
+            if ($this->number) {
+                self::$mockDataByNumber[$this->number] = $this;
+            }
         }
 
         public static function lookup($id) {
@@ -623,6 +628,93 @@ if (!class_exists('Signal')) {
 
         public static function reset() {
             self::$handlers = [];
+        }
+    }
+}
+
+// Mock SubticketPlugin class
+if (!class_exists('SubticketPlugin')) {
+    class SubticketPlugin {
+        /**
+         * Get parent ticket for a child
+         *
+         * @param int $childId Child ticket ID (internal ID, not number!)
+         * @return array|null Parent ticket data or null
+         */
+        public function getParent($childId) {
+            // Get child ticket
+            $childTicket = Ticket::lookup($childId);
+            if (!$childTicket || !$childTicket->getPid()) {
+                return null;
+            }
+
+            // Get parent ticket
+            $parentTicket = Ticket::lookup($childTicket->getPid());
+            if (!$parentTicket) {
+                return null;
+            }
+
+            return [
+                'ticket_id' => $parentTicket->getId(),
+                'number' => $parentTicket->getNumber(),
+                'subject' => $parentTicket->getSubject(),
+                'status' => $parentTicket->getStatus() ? $parentTicket->getStatus()->getName() : 'Open',
+            ];
+        }
+
+        /**
+         * Get children tickets for a parent
+         *
+         * @param int $parentId Parent ticket ID (internal ID, not number!)
+         * @return array Array of child ticket data
+         */
+        public function getChildren($parentId) {
+            $children = [];
+            foreach (Ticket::$mockData as $ticket) {
+                if ($ticket->getPid() === $parentId) {
+                    $children[] = [
+                        'id' => $ticket->getId(),
+                        'number' => $ticket->getNumber(),
+                        'subject' => $ticket->getSubject(),
+                        'status' => $ticket->getStatus() ? $ticket->getStatus()->getName() : 'Open',
+                        'created' => $ticket->getCreated(),
+                    ];
+                }
+            }
+            return $children;
+        }
+
+        /**
+         * Link child ticket to parent
+         *
+         * @param int $childId Child ticket ID (internal ID!)
+         * @param int $parentId Parent ticket ID (internal ID!)
+         * @return bool Success
+         */
+        public function linkTicket($childId, $parentId) {
+            $childTicket = Ticket::lookup($childId);
+            if (!$childTicket) {
+                return false;
+            }
+
+            $childTicket->setPid($parentId);
+            return true;
+        }
+
+        /**
+         * Unlink child ticket from parent
+         *
+         * @param int $childId Child ticket ID (internal ID!)
+         * @return bool Success
+         */
+        public function unlinkTicket($childId) {
+            $childTicket = Ticket::lookup($childId);
+            if (!$childTicket) {
+                return false;
+            }
+
+            $childTicket->setPid(null);
+            return true;
         }
     }
 }
