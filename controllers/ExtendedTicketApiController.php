@@ -808,27 +808,6 @@ class ExtendedTicketApiController extends TicketApiController {
             $ticketId = $ticket->getId();
             $ticketSubject = $ticket->getSubject();
 
-            // Check if ticket has children (log for audit trail)
-            $childCount = 0;
-            if (method_exists($ticket, 'getNumChildren')) {
-                $childCount = $ticket->getNumChildren();
-                if ($childCount > 0) {
-                    error_log(sprintf(
-                        '[API-ENDPOINTS-INFO] Ticket #%s has %d child ticket(s), removing parent reference',
-                        $ticketNumberToReturn,
-                        $childCount
-                    ));
-                }
-            }
-
-            // Log deletion attempt for audit trail (without API key for security)
-            error_log(sprintf(
-                '[API-ENDPOINTS-INFO] Deleting ticket #%s (ID: %d, Subject: "%s") via API',
-                $ticketNumberToReturn,
-                $ticketId,
-                $ticketSubject
-            ));
-
             // Delete ticket using osTicket's delete() method
             // This will handle:
             // - Removing ticket_pid from child tickets
@@ -836,13 +815,6 @@ class ExtendedTicketApiController extends TicketApiController {
             // - Deleting custom data
             // - Deleting the ticket itself
             $ticket->delete();
-
-            // Log successful deletion for audit trail (without API key for security)
-            error_log(sprintf(
-                '[API-ENDPOINTS-INFO] Successfully deleted ticket #%s (ID: %d) via API',
-                $ticketNumberToReturn,
-                $ticketId
-            ));
 
             // REFACTOR PHASE: Always return ticket NUMBER for consistency
             // (regardless of whether user provided number or ID as input)
