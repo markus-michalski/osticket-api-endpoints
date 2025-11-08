@@ -195,9 +195,11 @@ class UnlinkSubticketTest extends TestCase {
         // Arrange: API key with permission
         $apiKey = $this->createApiKeyWithPermission();
 
-        // Arrange: Plugin with removeLink tracking
-        $pluginCallLog = [];
-        $plugin = $this->registerSubticketPluginWithRemoveLink($pluginCallLog);
+        // Arrange: Plugin available
+        $this->registerSubticketPluginWithRemoveLink();
+
+        // Reset call log before test
+        SubticketPlugin::resetCallLog();
 
         // Act: Unlink child
         $controller = $this->createSubticketController();
@@ -205,10 +207,11 @@ class UnlinkSubticketTest extends TestCase {
         $result = $controller->unlinkChild('ABC200');
 
         // Assert: Plugin was called
-        $this->assertCount(1, $pluginCallLog,
-            'Plugin removeLink should be called exactly once');
+        $this->assertCount(1, SubticketPlugin::$callLog['unlinkTicket'] ?? [],
+            'Plugin unlinkTicket should be called exactly once');
 
-        $this->assertEquals(200, $pluginCallLog[0]['child_id'],
+        $unlinkCalls = SubticketPlugin::$callLog['unlinkTicket'];
+        $this->assertEquals(200, $unlinkCalls[0]['childId'],
             'Plugin should be called with child ID 200');
     }
 
@@ -350,7 +353,7 @@ class UnlinkSubticketTest extends TestCase {
         // Expect Exception
         $this->expectException(Exception::class);
         $this->expectExceptionCode(400);
-        $this->expectExceptionMessage('Invalid child ticket ID');
+        $this->expectExceptionMessage('Invalid child ticket number');
 
         // Act: Try to unlink with invalid child ID
         $controller = $this->createSubticketController();

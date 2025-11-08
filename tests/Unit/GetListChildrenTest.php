@@ -301,7 +301,7 @@ class GetListChildrenTest extends TestCase {
      *
      * Expected:
      * - Throws Exception with code 404
-     * - Error message: "Ticket not found"
+     * - Error message: "Parent ticket not found"
      *
      * Implementation Method: SubticketApiController->getList(int $parentId): array
      */
@@ -318,7 +318,7 @@ class GetListChildrenTest extends TestCase {
         // Expect Exception
         $this->expectException(Exception::class);
         $this->expectExceptionCode(404);
-        $this->expectExceptionMessage('Ticket not found');
+        $this->expectExceptionMessage('Parent ticket not found');
 
         // Act: Try to get children of non-existent parent
         $controller = $this->createSubticketController();
@@ -438,7 +438,7 @@ class GetListChildrenTest extends TestCase {
         // Expect Exception
         $this->expectException(Exception::class);
         $this->expectExceptionCode(400);
-        $this->expectExceptionMessage('Invalid ticket ID');
+        $this->expectExceptionMessage('Invalid ticket number');
 
         // Act: Try to get children with invalid ID (0 is considered invalid)
         $controller = $this->createSubticketController();

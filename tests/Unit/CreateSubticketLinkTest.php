@@ -222,9 +222,11 @@ class CreateSubticketLinkTest extends TestCase {
         // Arrange: API key with permission
         $apiKey = $this->createApiKeyWithPermission();
 
-        // Arrange: Plugin with createLink tracking
-        $pluginCallLog = [];
-        $plugin = $this->registerSubticketPluginWithCreateLink($pluginCallLog);
+        // Arrange: Plugin available
+        $this->registerSubticketPluginWithCreateLink();
+
+        // Reset call log before test
+        SubticketPlugin::resetCallLog();
 
         // Act: Create subticket link
         $controller = $this->createSubticketController();
@@ -232,14 +234,15 @@ class CreateSubticketLinkTest extends TestCase {
         $result = $controller->createLink('ABC100', 'ABC200');
 
         // Assert: Plugin was called
-        $this->assertCount(1, $pluginCallLog,
-            'Plugin createLink should be called exactly once');
+        $this->assertCount(1, SubticketPlugin::$callLog['linkTicket'] ?? [],
+            'Plugin linkTicket should be called exactly once');
 
-        $this->assertEquals(100, $pluginCallLog[0]['parent_id'],
-            'Plugin should be called with parent ID 100');
-
-        $this->assertEquals(200, $pluginCallLog[0]['child_id'],
+        $linkCalls = SubticketPlugin::$callLog['linkTicket'];
+        $this->assertEquals(200, $linkCalls[0]['childId'],
             'Plugin should be called with child ID 200');
+
+        $this->assertEquals(100, $linkCalls[0]['parentId'],
+            'Plugin should be called with parent ID 100');
     }
 
     /**
@@ -317,7 +320,7 @@ class CreateSubticketLinkTest extends TestCase {
         // Act: Try to create link with non-existent child
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $controller->createLink(100, 999); // Child 999 does not exist
+        $controller->createLink('ABC100', '999'); // Parent exists, child does not
     }
 
     /**
@@ -424,7 +427,7 @@ class CreateSubticketLinkTest extends TestCase {
         // Expect Exception
         $this->expectException(Exception::class);
         $this->expectExceptionCode(400);
-        $this->expectExceptionMessage('Invalid parent ticket ID');
+        $this->expectExceptionMessage('Invalid parent ticket number');
 
         // Act: Try to create link with invalid parent ID
         $controller = $this->createSubticketController();
@@ -456,12 +459,12 @@ class CreateSubticketLinkTest extends TestCase {
         // Expect Exception
         $this->expectException(Exception::class);
         $this->expectExceptionCode(400);
-        $this->expectExceptionMessage('Invalid child ticket ID');
+        $this->expectExceptionMessage('Invalid child ticket number');
 
         // Act: Try to create link with invalid child ID
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $controller->createLink(100, 0); // Invalid: ID must be > 0
+        $controller->createLink('ABC100', '0'); // Invalid: ID must be > 0
     }
 
     /**
@@ -497,7 +500,7 @@ class CreateSubticketLinkTest extends TestCase {
         // Act: Try to create link with same parent and child
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $controller->createLink(100, 100); // Same ticket
+        $controller->createLink('ABC100', 'ABC100'); // Same ticket
     }
 
     /**
@@ -527,9 +530,9 @@ class CreateSubticketLinkTest extends TestCase {
         // Arrange: Plugin available with hasParent check
         $plugin = $this->registerSubticketPluginWithHasParent(true, 100);
 
-        // Expect Exception
+        // Expect Exception (422 instead of 409 because osTicket's Http::response() doesn't support 409)
         $this->expectException(Exception::class);
-        $this->expectExceptionCode(409);
+        $this->expectExceptionCode(422);
         $this->expectExceptionMessage('Subticket relationship already exists');
 
         // Act: Try to create link when relationship already exists
@@ -567,9 +570,9 @@ class CreateSubticketLinkTest extends TestCase {
         // Arrange: Plugin available with hasParent check (different parent)
         $plugin = $this->registerSubticketPluginWithHasParent(true, 150);
 
-        // Expect Exception
+        // Expect Exception (422 instead of 409 because osTicket's Http::response() doesn't support 409)
         $this->expectException(Exception::class);
-        $this->expectExceptionCode(409);
+        $this->expectExceptionCode(422);
         $this->expectExceptionMessage('Child ticket already has a different parent');
 
         // Act: Try to create link when child has different parent

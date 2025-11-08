@@ -178,11 +178,7 @@ class SubticketPermissionTest extends TestCase {
         API::$mockData['test-key-full-access'] = $apiKey;
 
         // Arrange: Plugin available
-        $mockPlugin = new class {
-            public function isActive() { return true; }
-            public function getName() { return 'Subticket Plugin'; }
-        };
-        PluginManager::getInstance()->registerPlugin('subticket', $mockPlugin);
+        SubticketPlugin::$mockEnabled = true;
 
         // Act: Combined check
         $controller = $this->createSubticketController();

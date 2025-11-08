@@ -225,6 +225,11 @@ if (!class_exists('Ticket')) {
             $this->userEmail = $data['user_email'] ?? 'test@example.com';
             $this->customData = $data['custom_data'] ?? null;
 
+            // Auto-load status from status_id if not explicitly provided
+            if (!$this->status && $this->statusId) {
+                $this->status = TicketStatus::lookup($this->statusId);
+            }
+
             // Auto-register in mockDataByNumber for lookupByNumber() support
             if ($this->number) {
                 self::$mockDataByNumber[$this->number] = $this;
@@ -310,6 +315,30 @@ if (!class_exists('Ticket')) {
         }
 
         public function save() {
+            // Sync ht array changes to properties (for ExtendedTicketApiController updates)
+            if (isset($this->ht['topic_id'])) {
+                $this->topicId = $this->ht['topic_id'];
+            }
+            if (isset($this->ht['dept_id'])) {
+                $this->deptId = $this->ht['dept_id'];
+            }
+            if (isset($this->ht['status_id'])) {
+                $this->statusId = $this->ht['status_id'];
+                // Also reload status object
+                $this->status = TicketStatus::lookup($this->statusId);
+            }
+            if (isset($this->ht['priority_id'])) {
+                $this->priorityId = $this->ht['priority_id'];
+            }
+            if (isset($this->ht['sla_id'])) {
+                $this->slaId = $this->ht['sla_id'];
+            }
+            if (isset($this->ht['staff_id'])) {
+                $this->staffId = $this->ht['staff_id'];
+            }
+            if (isset($this->ht['team_id'])) {
+                $this->teamId = $this->ht['team_id'];
+            }
             return true;
         }
 
@@ -643,12 +672,25 @@ if (!class_exists('SubticketPlugin')) {
         public static $mockEnabled = true;
 
         /**
+         * Static array to track method calls for testing
+         * Format: ['linkTicket' => [...], 'unlinkTicket' => [...]]
+         */
+        public static $callLog = [];
+
+        /**
          * Constructor - throws exception if plugin is disabled
          */
         public function __construct() {
             if (!self::$mockEnabled) {
                 throw new Exception('Subticket plugin not available', 501);
             }
+        }
+
+        /**
+         * Reset call log (should be called in test tearDown)
+         */
+        public static function resetCallLog() {
+            self::$callLog = [];
         }
 
         /**
@@ -708,6 +750,15 @@ if (!class_exists('SubticketPlugin')) {
          * @return bool Success
          */
         public function linkTicket($childId, $parentId) {
+            // Track method call
+            if (!isset(self::$callLog['linkTicket'])) {
+                self::$callLog['linkTicket'] = [];
+            }
+            self::$callLog['linkTicket'][] = [
+                'childId' => $childId,
+                'parentId' => $parentId,
+            ];
+
             $childTicket = Ticket::lookup($childId);
             if (!$childTicket) {
                 return false;
@@ -724,6 +775,14 @@ if (!class_exists('SubticketPlugin')) {
          * @return bool Success
          */
         public function unlinkTicket($childId) {
+            // Track method call
+            if (!isset(self::$callLog['unlinkTicket'])) {
+                self::$callLog['unlinkTicket'] = [];
+            }
+            self::$callLog['unlinkTicket'][] = [
+                'childId' => $childId,
+            ];
+
             $childTicket = Ticket::lookup($childId);
             if (!$childTicket) {
                 return false;
