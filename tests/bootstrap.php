@@ -253,6 +253,7 @@ if (!class_exists('Ticket')) {
         public function getPid() { return $this->pid; }
         public function isChild() { return $this->isChild; }
         public function getCreateDate() { return $this->created; }
+        public function getCreated() { return $this->created; } // Alias for getCreateDate()
         public function getUpdateDate() { return $this->updated; }
         public function getDueDate() { return $this->duedate; }
         public function getCloseDate() { return $this->closed; }

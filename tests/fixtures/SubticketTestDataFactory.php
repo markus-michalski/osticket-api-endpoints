@@ -159,6 +159,8 @@ class SubticketTestDataFactory {
              */
             public function createLink(Ticket $parent, Ticket $child): void {
                 $this->relationships[$child->getId()] = $parent->getId();
+                // Also set PID in child ticket for getChildren() to work
+                $child->setPid($parent->getId());
             }
 
             /**

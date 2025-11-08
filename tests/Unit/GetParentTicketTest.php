@@ -104,7 +104,7 @@ class GetParentTicketTest extends TestCase {
         // Act: Get parent ticket
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $result = $controller->getParent(200);
+        $result = $controller->getParent('ABC200');
 
         // Assert: Parent returned
         $this->assertIsArray($result,
@@ -165,7 +165,7 @@ class GetParentTicketTest extends TestCase {
         // Act: Get parent ticket
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $result = $controller->getParent(200);
+        $result = $controller->getParent('ABC200');
 
         // Assert: Parent contains all required fields
         $parent = $result['parent'];
@@ -229,7 +229,7 @@ class GetParentTicketTest extends TestCase {
         // Act: Get parent ticket
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $result = $controller->getParent(200);
+        $result = $controller->getParent('ABC200');
 
         // Assert: Parent is null
         $this->assertIsArray($result,
@@ -274,7 +274,7 @@ class GetParentTicketTest extends TestCase {
         // Act: Try to get parent of non-existent ticket
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $controller->getParent(999); // Non-existent ID
+        $controller->getParent('999'); // Non-existent ID
     }
 
     /**
@@ -322,7 +322,7 @@ class GetParentTicketTest extends TestCase {
         // Act: Try to get parent without permission
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $controller->getParent(200);
+        $controller->getParent('ABC200');
     }
 
     /**
@@ -364,7 +364,7 @@ class GetParentTicketTest extends TestCase {
         // Act: Try to get parent without plugin
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $controller->getParent(200);
+        $controller->getParent('ABC200');
     }
 
     /**
@@ -442,7 +442,7 @@ class GetParentTicketTest extends TestCase {
         // Act: Get parent ticket
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $result = $controller->getParent(200);
+        $result = $controller->getParent('ABC200');
 
         // Assert: Should handle gracefully (return null)
         // When parent reference is orphaned, plugin returns null gracefully

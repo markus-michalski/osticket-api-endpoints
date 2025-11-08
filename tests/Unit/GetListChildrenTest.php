@@ -122,7 +122,7 @@ class GetListChildrenTest extends TestCase {
         // Act: Get list of children
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $result = $controller->getList(100);
+        $result = $controller->getList('ABC100');
 
         // Assert: Children returned
         $this->assertIsArray($result,
@@ -201,7 +201,7 @@ class GetListChildrenTest extends TestCase {
         // Act: Get list of children
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $result = $controller->getList(100);
+        $result = $controller->getList('ABC100');
 
         // Assert: First child contains all required fields
         $firstChild = $result['children'][0];
@@ -273,7 +273,7 @@ class GetListChildrenTest extends TestCase {
         // Act: Get list of children
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $result = $controller->getList(100);
+        $result = $controller->getList('ABC100');
 
         // Assert: Empty children array
         $this->assertIsArray($result,
@@ -321,7 +321,7 @@ class GetListChildrenTest extends TestCase {
         // Act: Try to get children of non-existent parent
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $controller->getList(999); // Non-existent ID
+        $controller->getList('999'); // Non-existent ID
     }
 
     /**
@@ -368,7 +368,7 @@ class GetListChildrenTest extends TestCase {
         // Act: Try to get children without permission
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $controller->getList(100);
+        $controller->getList('ABC100');
     }
 
     /**
@@ -409,7 +409,7 @@ class GetListChildrenTest extends TestCase {
         // Act: Try to get children without plugin
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $controller->getList(100);
+        $controller->getList('ABC100');
     }
 
     /**
@@ -498,7 +498,7 @@ class GetListChildrenTest extends TestCase {
         // Act: Get list of children
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $result = $controller->getList(100);
+        $result = $controller->getList('ABC100');
 
         // Assert: Should handle gracefully (skip orphaned references)
         $this->assertIsArray($result,

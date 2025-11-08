@@ -94,7 +94,7 @@ class SubticketWorkflowTest extends PHPUnit\Framework\TestCase {
         $child2 = SubticketTestDataFactory::createTicket(['subject' => 'Child 2']);
 
         // 2. Link child1 to parent
-        $result = $this->controller->createLink($parent->getId(), $child1->getId());
+        $result = $this->controller->createLink($parent->getNumber(), $child1->getNumber());
 
         $this->assertTrue($result['success']);
         $this->assertEquals('Subticket relationship created successfully', $result['message']);
@@ -102,13 +102,13 @@ class SubticketWorkflowTest extends PHPUnit\Framework\TestCase {
         $this->assertEquals($child1->getId(), $result['child']['ticket_id']);
 
         // 3. Link child2 to parent
-        $result = $this->controller->createLink($parent->getId(), $child2->getId());
+        $result = $this->controller->createLink($parent->getNumber(), $child2->getNumber());
 
         $this->assertTrue($result['success']);
         $this->assertEquals($child2->getId(), $result['child']['ticket_id']);
 
         // 4. Verify getList() returns both children
-        $listResult = $this->controller->getList($parent->getId());
+        $listResult = $this->controller->getList($parent->getNumber());
 
         $this->assertArrayHasKey('children', $listResult);
         $this->assertCount(2, $listResult['children']);
@@ -118,20 +118,20 @@ class SubticketWorkflowTest extends PHPUnit\Framework\TestCase {
         $this->assertContains($child2->getId(), $childIds);
 
         // 5. Unlink child1
-        $unlinkResult = $this->controller->unlinkChild($child1->getId());
+        $unlinkResult = $this->controller->unlinkChild($child1->getNumber());
 
         $this->assertTrue($unlinkResult['success']);
         $this->assertEquals('Subticket relationship removed successfully', $unlinkResult['message']);
         $this->assertEquals($child1->getId(), $unlinkResult['child']['ticket_id']);
 
         // 6. Verify getList() returns only child2
-        $listResult = $this->controller->getList($parent->getId());
+        $listResult = $this->controller->getList($parent->getNumber());
 
         $this->assertCount(1, $listResult['children']);
         $this->assertEquals($child2->getId(), $listResult['children'][0]['ticket_id']);
 
         // 7. Verify child1 has no parent
-        $parentResult = $this->controller->getParent($child1->getId());
+        $parentResult = $this->controller->getParent($child1->getNumber());
 
         $this->assertNull($parentResult['parent']);
     }
@@ -154,7 +154,7 @@ class SubticketWorkflowTest extends PHPUnit\Framework\TestCase {
         $child = $data['child'];
 
         // 2. Get parent via getParent()
-        $parentResult = $this->controller->getParent($child->getId());
+        $parentResult = $this->controller->getParent($child->getNumber());
 
         $this->assertNotNull($parentResult['parent']);
         $this->assertEquals($parent->getId(), $parentResult['parent']['ticket_id']);
@@ -162,7 +162,7 @@ class SubticketWorkflowTest extends PHPUnit\Framework\TestCase {
         $this->assertEquals($parent->getSubject(), $parentResult['parent']['subject']);
 
         // 3. Get children via getList()
-        $listResult = $this->controller->getList($parent->getId());
+        $listResult = $this->controller->getList($parent->getNumber());
 
         $this->assertCount(1, $listResult['children']);
         $this->assertEquals($child->getId(), $listResult['children'][0]['ticket_id']);
@@ -203,17 +203,17 @@ class SubticketWorkflowTest extends PHPUnit\Framework\TestCase {
         $children = $data['children'];
 
         // 2. Verify all 3 children are linked
-        $listResult = $this->controller->getList($parent->getId());
+        $listResult = $this->controller->getList($parent->getNumber());
         $this->assertCount(3, $listResult['children']);
 
         // 3. Unlink middle child (child 2)
         $middleChild = $children[1]; // Index 1 = second child
-        $unlinkResult = $this->controller->unlinkChild($middleChild->getId());
+        $unlinkResult = $this->controller->unlinkChild($middleChild->getNumber());
 
         $this->assertTrue($unlinkResult['success']);
 
         // 4. Verify getList() returns only 2 children
-        $listResult = $this->controller->getList($parent->getId());
+        $listResult = $this->controller->getList($parent->getNumber());
         $this->assertCount(2, $listResult['children']);
 
         $remainingChildIds = array_column($listResult['children'], 'ticket_id');
@@ -222,14 +222,14 @@ class SubticketWorkflowTest extends PHPUnit\Framework\TestCase {
         $this->assertNotContains($middleChild->getId(), $remainingChildIds);
 
         // 5. Verify middle child has no parent
-        $parentResult = $this->controller->getParent($middleChild->getId());
+        $parentResult = $this->controller->getParent($middleChild->getNumber());
         $this->assertNull($parentResult['parent']);
 
         // 6. Verify other children still have parent
-        $parentResult1 = $this->controller->getParent($children[0]->getId());
+        $parentResult1 = $this->controller->getParent($children[0]->getNumber());
         $this->assertEquals($parent->getId(), $parentResult1['parent']['ticket_id']);
 
-        $parentResult3 = $this->controller->getParent($children[2]->getId());
+        $parentResult3 = $this->controller->getParent($children[2]->getNumber());
         $this->assertEquals($parent->getId(), $parentResult3['parent']['ticket_id']);
     }
 
@@ -251,11 +251,11 @@ class SubticketWorkflowTest extends PHPUnit\Framework\TestCase {
         $child = $data['child'];
 
         // 2. Get parent via getParent()
-        $parentViaGetParent = $this->controller->getParent($child->getId());
+        $parentViaGetParent = $this->controller->getParent($child->getNumber());
         $parentData1 = $parentViaGetParent['parent'];
 
         // 3. Get child via getList()
-        $childViaGetList = $this->controller->getList($parent->getId());
+        $childViaGetList = $this->controller->getList($parent->getNumber());
         $childData = $childViaGetList['children'][0];
 
         // 4. Both should have identical structure
@@ -299,32 +299,32 @@ class SubticketWorkflowTest extends PHPUnit\Framework\TestCase {
         $child = SubticketTestDataFactory::createTicket(['subject' => 'Child']);
 
         // 2. Link child to parent1
-        $this->controller->createLink($parent1->getId(), $child->getId());
+        $this->controller->createLink($parent1->getNumber(), $child->getNumber());
 
         // Verify link
-        $parentResult = $this->controller->getParent($child->getId());
+        $parentResult = $this->controller->getParent($child->getNumber());
         $this->assertEquals($parent1->getId(), $parentResult['parent']['ticket_id']);
 
         // 3. Unlink child
-        $this->controller->unlinkChild($child->getId());
+        $this->controller->unlinkChild($child->getNumber());
 
         // Verify unlinked
-        $parentResult = $this->controller->getParent($child->getId());
+        $parentResult = $this->controller->getParent($child->getNumber());
         $this->assertNull($parentResult['parent']);
 
         // 4. Link child to parent2
-        $this->controller->createLink($parent2->getId(), $child->getId());
+        $this->controller->createLink($parent2->getNumber(), $child->getNumber());
 
         // Verify new link
-        $parentResult = $this->controller->getParent($child->getId());
+        $parentResult = $this->controller->getParent($child->getNumber());
         $this->assertEquals($parent2->getId(), $parentResult['parent']['ticket_id']);
 
         // Verify parent1 has no children
-        $listResult1 = $this->controller->getList($parent1->getId());
+        $listResult1 = $this->controller->getList($parent1->getNumber());
         $this->assertEmpty($listResult1['children']);
 
         // Verify parent2 has child
-        $listResult2 = $this->controller->getList($parent2->getId());
+        $listResult2 = $this->controller->getList($parent2->getNumber());
         $this->assertCount(1, $listResult2['children']);
         $this->assertEquals($child->getId(), $listResult2['children'][0]['ticket_id']);
     }
@@ -346,7 +346,7 @@ class SubticketWorkflowTest extends PHPUnit\Framework\TestCase {
         $children = $data['children'];
 
         // 2. Verify getList() returns all 10
-        $listResult = $this->controller->getList($parent->getId());
+        $listResult = $this->controller->getList($parent->getNumber());
 
         $this->assertCount(10, $listResult['children']);
 
@@ -362,7 +362,7 @@ class SubticketWorkflowTest extends PHPUnit\Framework\TestCase {
 
         // 4. Verify each child's getParent() returns correct parent
         foreach ($children as $child) {
-            $parentResult = $this->controller->getParent($child->getId());
+            $parentResult = $this->controller->getParent($child->getNumber());
             $this->assertEquals(
                 $parent->getId(),
                 $parentResult['parent']['ticket_id'],
@@ -389,18 +389,18 @@ class SubticketWorkflowTest extends PHPUnit\Framework\TestCase {
         $child = $data['child'];
 
         // 2. Verify link exists
-        $parentResult = $this->controller->getParent($child->getId());
+        $parentResult = $this->controller->getParent($child->getNumber());
         $this->assertNotNull($parentResult['parent']);
 
         // 3. Unlink child
-        $this->controller->unlinkChild($child->getId());
+        $this->controller->unlinkChild($child->getNumber());
 
         // 4. Verify getParent() returns null
-        $parentResult = $this->controller->getParent($child->getId());
+        $parentResult = $this->controller->getParent($child->getNumber());
         $this->assertNull($parentResult['parent'], 'getParent() should return null after unlink');
 
         // 5. Verify child not in parent's list
-        $listResult = $this->controller->getList($parent->getId());
+        $listResult = $this->controller->getList($parent->getNumber());
         $this->assertEmpty(
             $listResult['children'],
             'Parent should have no children after unlink'
@@ -424,21 +424,21 @@ class SubticketWorkflowTest extends PHPUnit\Framework\TestCase {
         $children = $data['children'];
 
         // 2. Verify all 3 are linked
-        $listResult = $this->controller->getList($parent->getId());
+        $listResult = $this->controller->getList($parent->getNumber());
         $this->assertCount(3, $listResult['children']);
 
         // 3. Unlink all children sequentially
         foreach ($children as $child) {
-            $this->controller->unlinkChild($child->getId());
+            $this->controller->unlinkChild($child->getNumber());
         }
 
         // 4. Verify getList() returns empty array
-        $listResult = $this->controller->getList($parent->getId());
+        $listResult = $this->controller->getList($parent->getNumber());
         $this->assertEmpty($listResult['children'], 'All children should be unlinked');
 
         // 5. Verify each child has no parent
         foreach ($children as $child) {
-            $parentResult = $this->controller->getParent($child->getId());
+            $parentResult = $this->controller->getParent($child->getNumber());
             $this->assertNull(
                 $parentResult['parent'],
                 sprintf('Child %d should have no parent', $child->getId())

@@ -96,7 +96,7 @@ class CreateSubticketLinkTest extends TestCase {
         // Act: Create subticket link
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $result = $controller->createLink(100, 200);
+        $result = $controller->createLink('ABC100', 'ABC200');
 
         // Assert: Success response
         $this->assertIsArray($result,
@@ -148,7 +148,7 @@ class CreateSubticketLinkTest extends TestCase {
         // Act: Create subticket link
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $result = $controller->createLink(100, 200);
+        $result = $controller->createLink('ABC100', 'ABC200');
 
         // Assert: Parent data
         $this->assertArrayHasKey('parent', $result,
@@ -227,7 +227,7 @@ class CreateSubticketLinkTest extends TestCase {
         // Act: Create subticket link
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $result = $controller->createLink(100, 200);
+        $result = $controller->createLink('ABC100', 'ABC200');
 
         // Assert: Plugin was called
         $this->assertCount(1, $pluginCallLog,
@@ -358,7 +358,7 @@ class CreateSubticketLinkTest extends TestCase {
         // Act: Try to create link without permission
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $controller->createLink(100, 200);
+        $controller->createLink('ABC100', 'ABC200');
     }
 
     /**
@@ -395,7 +395,7 @@ class CreateSubticketLinkTest extends TestCase {
         // Act: Try to create link without plugin
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $controller->createLink(100, 200);
+        $controller->createLink('ABC100', 'ABC200');
     }
 
     /**
@@ -533,7 +533,7 @@ class CreateSubticketLinkTest extends TestCase {
         // Act: Try to create link when relationship already exists
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $controller->createLink(100, 200);
+        $controller->createLink('ABC100', 'ABC200');
     }
 
     /**
@@ -573,7 +573,7 @@ class CreateSubticketLinkTest extends TestCase {
         // Act: Try to create link when child has different parent
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $controller->createLink(100, 200);
+        $controller->createLink('ABC100', 'ABC200');
     }
 
     // ========================================================================

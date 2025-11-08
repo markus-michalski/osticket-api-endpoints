@@ -89,7 +89,7 @@ class UnlinkSubticketTest extends TestCase {
         // Act: Unlink child from parent
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $result = $controller->unlinkChild(200);
+        $result = $controller->unlinkChild('ABC200');
 
         // Assert: Success response
         $this->assertIsArray($result,
@@ -143,7 +143,7 @@ class UnlinkSubticketTest extends TestCase {
         // Act: Unlink child
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $result = $controller->unlinkChild(200);
+        $result = $controller->unlinkChild('ABC200');
 
         // Assert: Child data
         $this->assertArrayHasKey('child', $result,
@@ -200,7 +200,7 @@ class UnlinkSubticketTest extends TestCase {
         // Act: Unlink child
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $result = $controller->unlinkChild(200);
+        $result = $controller->unlinkChild('ABC200');
 
         // Assert: Plugin was called
         $this->assertCount(1, $pluginCallLog,
@@ -241,7 +241,7 @@ class UnlinkSubticketTest extends TestCase {
         // Act: Try to unlink non-existent child
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $controller->unlinkChild(999); // Child 999 does not exist
+        $controller->unlinkChild('999'); // Child 999 does not exist
     }
 
     /**
@@ -284,7 +284,7 @@ class UnlinkSubticketTest extends TestCase {
         // Act: Try to unlink without permission
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $controller->unlinkChild(200);
+        $controller->unlinkChild('ABC200');
     }
 
     /**
@@ -321,7 +321,7 @@ class UnlinkSubticketTest extends TestCase {
         // Act: Try to unlink without plugin
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $controller->unlinkChild(200);
+        $controller->unlinkChild('ABC200');
     }
 
     /**
@@ -392,7 +392,7 @@ class UnlinkSubticketTest extends TestCase {
         // Act: Try to unlink child without parent
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $controller->unlinkChild(200);
+        $controller->unlinkChild('ABC200');
     }
 
     /**
@@ -445,7 +445,7 @@ class UnlinkSubticketTest extends TestCase {
         // Act: Try to unlink child from restricted department
         $controller = $this->createSubticketController();
         $controller->setTestApiKey($apiKey);
-        $controller->unlinkChild(200);
+        $controller->unlinkChild('ABC200');
     }
 
     // ========================================================================
