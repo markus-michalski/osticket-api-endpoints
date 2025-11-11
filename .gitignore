@@ -10,3 +10,6 @@ _Screenshots/
 # Test script with API credentials (should not be committed)
 TEST_CURL_COMMANDS.sh
 *.log
+
+# Releasefiles
+*.zip
