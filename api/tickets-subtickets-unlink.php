@@ -26,7 +26,11 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../include/plugins/api-endpoints/lib/ApiBootstrap.php';
+// Load osTicket bootstrap FIRST (must be relative to THIS file's location)
+require_once '../main.inc.php';
+
+// Then load ApiBootstrap helper
+require_once INCLUDE_DIR . 'plugins/api-endpoints/lib/ApiBootstrap.php';
 
 $bootstrap = ApiBootstrap::initialize();
 
