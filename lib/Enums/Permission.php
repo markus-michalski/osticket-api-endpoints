@@ -68,7 +68,7 @@ enum Permission: string
             self::ReadTickets => "read {$context}",
             self::SearchTickets => 'search tickets',
             self::DeleteTickets => 'delete tickets',
-            self::ReadStats => 'read statistics',
+            self::ReadStats => 'read ticket statistics',
             self::ManageSubtickets => 'manage subtickets',
         });
     }
@@ -87,13 +87,16 @@ enum Permission: string
      * Get fallback permission (if any)
      *
      * For some permissions, a more general permission may grant access.
-     * Example: can_read_stats might fallback to can_read_tickets.
+     * This matches the original fallback behavior in the controller:
+     * - SearchTickets falls back to ReadTickets
+     * - ReadStats falls back to ReadTickets
      *
      * @return self|null
      */
     public function fallback(): ?self
     {
         return match ($this) {
+            self::SearchTickets => self::ReadTickets,
             self::ReadStats => self::ReadTickets,
             default => null,
         };

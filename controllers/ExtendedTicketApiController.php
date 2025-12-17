@@ -1,22 +1,48 @@
 <?php
 
+declare(strict_types=1);
+
 // Only require if not in test environment
 if (!class_exists('TicketApiController')) {
     require_once(INCLUDE_DIR . 'api.tickets.php');
 }
 
+// Load extracted services
+require_once __DIR__ . '/../lib/Services/TicketValidatorService.php';
+require_once __DIR__ . '/../lib/Services/PermissionChecker.php';
+require_once __DIR__ . '/../lib/Enums/Permission.php';
+
 /**
  * Extended Ticket API Controller
  *
- * GREEN Phase: Minimale Implementation um Tests grün zu bekommen
+ * Extends osTicket's TicketApiController with additional endpoints:
+ * - GET/UPDATE/DELETE single tickets
+ * - Search with filters, pagination, sorting
+ * - Ticket statistics
+ * - Subticket management
+ *
+ * Uses extracted services for validation and permission checking
+ * to follow Single Responsibility Principle.
  */
 class ExtendedTicketApiController extends TicketApiController {
+
+    private TicketValidatorService $validator;
+    private PermissionChecker $permissionChecker;
 
     /**
      * Flag to skip API key validation in create()
      * Set by handleTicketCreation() when it has already validated the key
      */
-    private $skipApiKeyValidation = false;
+    private bool $skipApiKeyValidation = false;
+
+    /**
+     * Initialize controller with extracted services
+     */
+    public function __construct()
+    {
+        $this->validator = TicketValidatorService::getInstance();
+        $this->permissionChecker = PermissionChecker::getInstance();
+    }
 
     /**
      * Override API key validation to use Wildcard logic
@@ -42,7 +68,8 @@ class ExtendedTicketApiController extends TicketApiController {
      * Allow external callers to skip API key validation
      * Used by handleTicketCreation() after it has already validated the key
      */
-    function setSkipApiKeyValidation($skip) {
+    public function setSkipApiKeyValidation(bool $skip): void
+    {
         $this->skipApiKeyValidation = $skip;
     }
 
@@ -89,13 +116,14 @@ class ExtendedTicketApiController extends TicketApiController {
      *
      * @param array $data The ticket data from $_POST
      * @param string $source The source (usually 'API')
-     * @return Ticket The created ticket object
+     * @return Ticket|null The created ticket object
      */
-    function createTicket($data, $source = 'API') {
+    public function createTicket($data, $source = 'API'): ?Ticket
+    {
         // Extract extended parameters that need to be applied AFTER creation
         // parentTicketNumber: User provides ticket NUMBER, we convert to ID
-        $parentTicketNumber = isset($data['parentTicketNumber']) ? $data['parentTicketNumber'] : null;
-        $deptId = isset($data['deptId']) ? $data['deptId'] : null;
+        $parentTicketNumber = $data['parentTicketNumber'] ?? null;
+        $deptId = $data['deptId'] ?? null;
 
         // Remove them so parent doesn't get confused
         unset($data['parentTicketNumber']);
@@ -109,11 +137,11 @@ class ExtendedTicketApiController extends TicketApiController {
             return null;
         }
 
-        // NOW apply our overrides
+        // NOW apply our overrides using extracted validator
         try {
             // Set department if provided
-            if ($deptId) {
-                $validatedDeptId = $this->validateDepartmentId($deptId);
+            if ($deptId !== null) {
+                $validatedDeptId = $this->validator->validateDepartmentId($deptId);
                 if ($ticket->getDeptId() != $validatedDeptId) {
                     $ticket->setDeptId($validatedDeptId);
                     $ticket->save();
@@ -121,8 +149,8 @@ class ExtendedTicketApiController extends TicketApiController {
             }
 
             // Set parent ticket if provided (convert NUMBER to ID)
-            if ($parentTicketNumber) {
-                $parentId = $this->validateParentTicketId($parentTicketNumber);
+            if ($parentTicketNumber !== null) {
+                $parentId = $this->validator->validateParentTicketId($parentTicketNumber);
                 if ($ticket->getPid() != $parentId) {
                     if (method_exists($ticket, 'setPid')) {
                         $ticket->setPid($parentId);
@@ -150,15 +178,17 @@ class ExtendedTicketApiController extends TicketApiController {
      * @return Ticket Updated ticket object
      * @throws Exception If ticket not found or unauthorized
      */
-    function update($ticketNumber, $data, $skipPermissionCheck = false) {
+    public function update(string $ticketNumber, array $data, bool $skipPermissionCheck = false): Ticket
+    {
         // API key validation with permission check (unless skipped for internal calls)
         if (!$skipPermissionCheck) {
-            if (!($key = $this->requireApiKey())) {
+            $key = $this->requireApiKey();
+            if (!$key) {
                 throw new Exception('API key not authorized', 401);
             }
 
-            // Check for UPDATE permission (no fallback - security!)
-            $this->requireUpdatePermission($key);
+            // Check for UPDATE permission using PermissionChecker
+            $this->permissionChecker->require($key, Permission::UpdateTickets, 'update tickets');
         }
 
         // Lookup ticket by number
@@ -171,7 +201,7 @@ class ExtendedTicketApiController extends TicketApiController {
 
         // Update departmentId if provided
         if (isset($data['departmentId'])) {
-            $deptId = $this->validateDepartmentId($data['departmentId']);
+            $deptId = $this->validator->validateDepartmentId($data['departmentId']);
             if ($ticket->getDeptId() != $deptId) {
                 if ($ticket->setDeptId($deptId)) {
                     $updated = true;
@@ -181,7 +211,7 @@ class ExtendedTicketApiController extends TicketApiController {
 
         // Update topicId (Help Topic) if provided
         if (isset($data['topicId'])) {
-            $topicId = $this->validateTopicId($data['topicId']);
+            $topicId = $this->validator->validateTopicId($data['topicId']);
             if ($ticket->getTopicId() != $topicId) {
                 // Direct DB update via ht array (topic_id field)
                 $ticket->ht['topic_id'] = $topicId;
@@ -194,7 +224,7 @@ class ExtendedTicketApiController extends TicketApiController {
         // Update parentTicketNumber (set as subticket) if provided
         // User provides ticket NUMBER, we convert to internal ID
         if (isset($data['parentTicketNumber'])) {
-            $parentId = $this->validateParentTicketId($data['parentTicketNumber']);
+            $parentId = $this->validator->validateParentTicketId($data['parentTicketNumber']);
             // Check if not already a child of this parent
             if ($ticket->getPid() != $parentId) {
                 if (method_exists($ticket, 'setPid')) {
@@ -207,7 +237,7 @@ class ExtendedTicketApiController extends TicketApiController {
 
         // Update statusId if provided
         if (isset($data['statusId'])) {
-            $statusId = $this->validateStatusId($data['statusId']);
+            $statusId = $this->validator->validateStatusId($data['statusId']);
             if ($ticket->getStatusId() != $statusId) {
                 if ($ticket->setStatus($statusId)) {
                     $updated = true;
@@ -217,7 +247,7 @@ class ExtendedTicketApiController extends TicketApiController {
 
         // Update slaId if provided
         if (isset($data['slaId'])) {
-            $slaId = $this->validateSlaId($data['slaId']);
+            $slaId = $this->validator->validateSlaId($data['slaId']);
             if ($ticket->getSLAId() != $slaId) {
                 if ($ticket->setSLAId($slaId)) {
                     $updated = true;
@@ -227,7 +257,7 @@ class ExtendedTicketApiController extends TicketApiController {
 
         // Update staffId (assign to staff) if provided
         if (isset($data['staffId'])) {
-            $staffId = $this->validateStaffId($data['staffId']);
+            $staffId = $this->validator->validateStaffId($data['staffId']);
             if ($ticket->getStaffId() != $staffId) {
                 if ($ticket->setStaffId($staffId)) {
                     $updated = true;
@@ -237,23 +267,23 @@ class ExtendedTicketApiController extends TicketApiController {
 
         // Post internal note if provided (internal staff note)
         if (isset($data['note']) && trim($data['note']) !== '') {
-            $errors = array();
+            $errors = [];
 
             // Determine format (default: markdown)
-            $format = isset($data['noteFormat']) ? $data['noteFormat'] : 'markdown';
+            $format = $data['noteFormat'] ?? 'markdown';
 
             // CRITICAL: Set $_POST['format'] so Markdown-Support Plugin can intercept
             // The plugin listens to 'threadentry.created' signal and checks $_POST['format']
             $_POST['format'] = $format;
             $_POST['note'] = $data['note'];  // Also set note for newline restoration
 
-            $noteVars = array(
+            $noteVars = [
                 'note' => $data['note'],
-                'title' => isset($data['noteTitle']) ? $data['noteTitle'] : 'API Update',
+                'title' => $data['noteTitle'] ?? 'API Update',
                 'format' => $format,
                 'poster' => 'API',
                 'staffId' => 0  // System/API
-            );
+            ];
 
             if ($ticket->postNote($noteVars, $errors, false, false)) {
                 $updated = true;
@@ -262,384 +292,137 @@ class ExtendedTicketApiController extends TicketApiController {
             }
 
             // Clean up $_POST after note creation
-            unset($_POST['format']);
-            unset($_POST['note']);
+            unset($_POST['format'], $_POST['note']);
         }
 
         return $ticket;
     }
 
+    // =========================================================================
+    // Validation Delegation Methods (backward compatibility)
+    // All validation logic has been extracted to TicketValidatorService
+    // =========================================================================
+
     /**
      * Validate format parameter
-     *
-     * @param string|null $format Format to validate
-     * @return string Validated and normalized format
-     * @throws Exception If format is invalid
+     * @deprecated Use TicketValidatorService::getInstance()->validateFormat() directly
      */
-    public function validateFormat($format) {
-        // Normalize
-        $format = trim(strtolower($format ?? ''));
-
-        // Check if empty
-        if (empty($format)) {
-            throw new Exception('Format cannot be empty', 400);
-        }
-
-        // Allowed formats
-        $allowed = ['markdown', 'html', 'text'];
-
-        // Validate
-        if (!in_array($format, $allowed)) {
-            throw new Exception('Invalid format. Allowed: markdown, html, text', 400);
-        }
-
-        return $format;
+    public function validateFormat(?string $format): string
+    {
+        return $this->validator->validateFormat($format);
     }
 
     /**
      * Check if Markdown Support Plugin is active
-     *
-     * @return bool True if plugin is active, false otherwise
+     * @deprecated Use TicketValidatorService::getInstance()->isMarkdownPluginActive() directly
      */
-    public function isMarkdownPluginActive() {
-        // Method 1: Check if MarkdownThreadEntryBody class exists (preferred, faster)
-        if (class_exists('MarkdownThreadEntryBody')) {
-            return true;
-        }
-
-        // Method 2: Check via PluginManager
-        $markdown_plugin = PluginManager::getInstance()->getPlugin('markdown-support');
-        if ($markdown_plugin && method_exists($markdown_plugin, 'isActive') && $markdown_plugin->isActive()) {
-            return true;
-        }
-
-        return false;
+    public function isMarkdownPluginActive(): bool
+    {
+        return $this->validator->isMarkdownPluginActive();
     }
 
     /**
      * Validate department ID
-     *
-     * Accepts both ID (int) and name (string)
-     * If name is provided, looks up ID by name using osTicket's built-in method
-     *
-     * @param int|string $deptId Department ID or name to validate
-     * @return int Validated department ID
-     * @throws Exception If department not found or inactive
+     * @deprecated Use TicketValidatorService::getInstance()->validateDepartmentId() directly
      */
-    public function validateDepartmentId($deptId) {
-        // If string provided, try to lookup by name first
-        if (is_string($deptId) && !is_numeric($deptId)) {
-            // Try exact match first
-            $resolvedId = Dept::getIdByName($deptId);
-
-            // If no exact match, try case-insensitive search
-            if (!$resolvedId) {
-                foreach (Dept::objects()->filter(['ispublic' => 1]) as $dept) {
-                    if (strcasecmp($dept->getName(), $deptId) === 0) {
-                        $resolvedId = $dept->getId();
-                        break;
-                    }
-                }
-            }
-
-            if ($resolvedId) {
-                $deptId = $resolvedId;
-            } else {
-                throw new Exception("Department '$deptId' not found", 404);
-            }
-        }
-
-        // Now lookup by ID
-        $dept = Dept::lookup($deptId);
-
-        if (!$dept) {
-            throw new Exception('Department not found', 404);
-        }
-
-        if (!$dept->isActive()) {
-            throw new Exception('Department is not active', 400);
-        }
-
-        return $deptId;
+    public function validateDepartmentId(int|string $deptId): int
+    {
+        return $this->validator->validateDepartmentId($deptId);
     }
 
     /**
      * Validate parent ticket ID (for subtickets)
-     *
-     * @param mixed $parentId Parent ticket number or ID to validate
-     * @return int Validated parent ticket ID (internal ID, not number!)
-     * @throws Exception If parent not found or is already a child
+     * @deprecated Use TicketValidatorService::getInstance()->validateParentTicketId() directly
      */
-    public function validateParentTicketId($parentId) {
-        // Try to lookup by number first (user provides ticket NUMBER like "191215")
-        $parent = Ticket::lookupByNumber($parentId);
-
-        // If not found by number, try by ID as fallback
-        if (!$parent) {
-            $parent = Ticket::lookup($parentId);
-        }
-
-        if (!$parent) {
-            throw new Exception('Parent ticket not found', 404);
-        }
-
-        // Check if parent is not itself a child
-        if (method_exists($parent, 'isChild') && $parent->isChild()) {
-            throw new Exception('Parent ticket cannot be a child of another ticket', 400);
-        }
-
-        // CRITICAL: Return the INTERNAL ID (ticket_id), not the number!
-        // setPid() expects the internal ID, not the ticket number
-        return $parent->getId();
+    public function validateParentTicketId(int|string $parentId): int
+    {
+        return $this->validator->validateParentTicketId($parentId);
     }
 
     /**
      * Validate topic ID (Help Topic)
-     *
-     * Accepts both ID (int) and name (string)
-     * If name is provided, looks up ID by name using osTicket's built-in method
-     *
-     * @param int|string $topicId Topic ID or name to validate
-     * @return int Validated topic ID
-     * @throws Exception If topic not found or inactive
+     * @deprecated Use TicketValidatorService::getInstance()->validateTopicId() directly
      */
-    public function validateTopicId($topicId) {
-        // If string provided, try to lookup by name first
-        if (is_string($topicId) && !is_numeric($topicId)) {
-            // Try exact match first
-            $resolvedId = Topic::getIdByName($topicId);
-
-            // If no exact match, try case-insensitive search
-            if (!$resolvedId) {
-                foreach (Topic::objects()->filter(['isactive' => 1]) as $topic) {
-                    if (strcasecmp($topic->getName(), $topicId) === 0) {
-                        $resolvedId = $topic->getId();
-                        break;
-                    }
-                }
-            }
-
-            if ($resolvedId) {
-                $topicId = $resolvedId;
-            } else {
-                throw new Exception("Help Topic '$topicId' not found", 404);
-            }
-        }
-
-        // Now lookup by ID
-        $topic = Topic::lookup($topicId);
-
-        if (!$topic) {
-            throw new Exception('Help Topic not found', 404);
-        }
-
-        if (!$topic->isActive()) {
-            throw new Exception('Help Topic is not active', 400);
-        }
-
-        return $topicId;
+    public function validateTopicId(int|string $topicId): int
+    {
+        return $this->validator->validateTopicId($topicId);
     }
 
     /**
      * Validate status ID
-     *
-     * Accepts both ID (int) and name (string)
-     * If name is provided, looks up ID by name
-     *
-     * @param int|string $statusId Status ID or name to validate
-     * @return int Validated status ID
-     * @throws Exception If status not found
+     * @deprecated Use TicketValidatorService::getInstance()->validateStatusId() directly
      */
-    public function validateStatusId($statusId) {
-        // If string provided, try to lookup by name first
-        if (is_string($statusId) && !is_numeric($statusId)) {
-            // Try to find status by name (case-insensitive)
-            foreach (TicketStatus::objects() as $status) {
-                if (strcasecmp($status->getName(), $statusId) === 0) {
-                    $statusId = $status->getId();
-                    break;
-                }
-            }
-        }
-
-        // Now lookup by ID
-        $status = TicketStatus::lookup($statusId);
-
-        if (!$status) {
-            throw new Exception('Status not found', 404);
-        }
-
-        return $statusId;
+    public function validateStatusId(int|string $statusId): int
+    {
+        return $this->validator->validateStatusId($statusId);
     }
 
     /**
      * Validate SLA ID
-     *
-     * Accepts both ID (int) and name (string)
-     * If name is provided, looks up ID by name using osTicket's built-in method
-     *
-     * @param int|string $slaId SLA ID or name to validate
-     * @return int Validated SLA ID
-     * @throws Exception If SLA not found or inactive
+     * @deprecated Use TicketValidatorService::getInstance()->validateSlaId() directly
      */
-    public function validateSlaId($slaId) {
-        // If string provided, try to lookup by name first
-        if (is_string($slaId) && !is_numeric($slaId)) {
-            // Try exact match first
-            $resolvedId = SLA::getIdByName($slaId);
-
-            // If no exact match, try case-insensitive search
-            if (!$resolvedId) {
-                foreach (SLA::objects()->filter(['isactive' => 1]) as $sla) {
-                    if (strcasecmp($sla->getName(), $slaId) === 0) {
-                        $resolvedId = $sla->getId();
-                        break;
-                    }
-                }
-            }
-
-            if ($resolvedId) {
-                $slaId = $resolvedId;
-            } else {
-                throw new Exception("SLA '$slaId' not found", 404);
-            }
-        }
-
-        // Now lookup by ID
-        $sla = SLA::lookup($slaId);
-
-        if (!$sla) {
-            throw new Exception('SLA not found', 404);
-        }
-
-        if (!$sla->isActive()) {
-            throw new Exception('SLA is not active', 400);
-        }
-
-        return $slaId;
+    public function validateSlaId(int|string $slaId): int
+    {
+        return $this->validator->validateSlaId($slaId);
     }
 
     /**
      * Validate staff ID
-     *
-     * Accepts both ID (int) and username (string)
-     * Staff::lookup() already handles username, email, or ID
-     *
-     * @param int|string $staffId Staff ID or username to validate
-     * @return int Validated staff ID
-     * @throws Exception If staff not found or inactive
+     * @deprecated Use TicketValidatorService::getInstance()->validateStaffId() directly
      */
-    public function validateStaffId($staffId) {
-        // Staff::lookup() already handles username, email, or ID
-        $staff = Staff::lookup($staffId);
-
-        if (!$staff) {
-            throw new Exception('Staff member not found', 404);
-        }
-
-        if (!$staff->isActive()) {
-            throw new Exception('Staff member is not active', 400);
-        }
-
-        return $staff->getId();
+    public function validateStaffId(int|string $staffId): int
+    {
+        return $this->validator->validateStaffId($staffId);
     }
+
+    // =========================================================================
+    // Permission Check Delegation Methods (backward compatibility)
+    // All permission logic has been extracted to PermissionChecker
+    // =========================================================================
 
     /**
      * Check if API key has UPDATE permission
-     *
-     * @param API $key API key object
-     * @throws Exception if not authorized (401)
-     * @return void
+     * @deprecated Use PermissionChecker::getInstance()->require() directly
      */
-    private function requireUpdatePermission($key) {
-        // Check in hash table (osTicket's API class stores data in ht array)
-        if (isset($key->ht['can_update_tickets']) && $key->ht['can_update_tickets']) {
-            return;
-        }
-
-        throw new Exception('API key not authorized to update tickets', 401);
+    private function requireUpdatePermission($key): void
+    {
+        $this->permissionChecker->require($key, Permission::UpdateTickets, 'update tickets');
     }
 
     /**
      * Check if API key has READ permission
-     *
-     * No fallback to can_create_tickets for security reasons
-     *
-     * @param API $key API key object
-     * @param string $context Optional context for error message (e.g., "ticket statistics")
-     * @throws Exception if not authorized
-     * @return void
+     * @deprecated Use PermissionChecker::getInstance()->require() directly
      */
-    private function requireReadPermission($key, $context = 'tickets') {
-        // Check in hash table (osTicket's API class stores data in ht array)
-        if (isset($key->ht['can_read_tickets']) && $key->ht['can_read_tickets']) {
-            return;
-        }
-
-        throw new Exception("API key not authorized to read {$context}", 401);
+    private function requireReadPermission($key, string $context = 'tickets'): void
+    {
+        $this->permissionChecker->require($key, Permission::ReadTickets, $context);
     }
 
     /**
      * Check if API key has STATS permission
-     *
-     * Helper method to check stats permission (used by getTicketStats)
-     * Priority: can_read_stats > can_read_tickets (no create fallback for security)
-     *
-     * @param API $key API key object
-     * @throws Exception if not authorized
-     * @return void
+     * @deprecated Use PermissionChecker::getInstance()->require() directly
      */
-    private function requireStatsPermission($key) {
-        // Priority 1: Check for dedicated stats permission
-        if (isset($key->ht['can_read_stats']) && $key->ht['can_read_stats']) {
-            return;
-        }
-
-        // Priority 2: Fallback to read tickets permission (stats is a type of read)
-        if (isset($key->ht['can_read_tickets']) && $key->ht['can_read_tickets']) {
-            return;
-        }
-
-        throw new Exception('API key not authorized to read ticket statistics', 401);
+    private function requireStatsPermission($key): void
+    {
+        $this->permissionChecker->require($key, Permission::ReadStats, 'ticket statistics');
     }
 
     /**
      * Check if API key has SEARCH permission
-     *
-     * Priority: can_search_tickets > can_read_tickets (no create fallback for security)
-     *
-     * @param API $key API key object
-     * @throws Exception if not authorized (401)
+     * @deprecated Use PermissionChecker::getInstance()->require() directly
      */
-    private function requireSearchPermission($key) {
-        // Check in hash table (osTicket's API class stores data in ht array)
-        if (isset($key->ht['can_search_tickets']) && $key->ht['can_search_tickets']) {
-            return;
-        }
-
-        // Fallback to READ permission (search requires read access)
-        if (isset($key->ht['can_read_tickets']) && $key->ht['can_read_tickets']) {
-            return;
-        }
-
-        throw new Exception('API key not authorized to search tickets', 401);
+    private function requireSearchPermission($key): void
+    {
+        $this->permissionChecker->require($key, Permission::SearchTickets, 'search tickets');
     }
 
     /**
      * Check if API key has DELETE permission
-     *
-     * REFACTOR PHASE: Extracted from deleteTicket() to follow DRY principle
-     *
-     * @param API $key API key object
-     * @throws Exception if not authorized (401)
+     * @deprecated Use PermissionChecker::getInstance()->require() directly
      */
-    private function requireDeletePermission($key) {
-        // Check in hash table (osTicket's API class stores data in ht array)
-        if (isset($key->ht['can_delete_tickets']) && $key->ht['can_delete_tickets']) {
-            return;
-        }
-
-        throw new Exception('API key not authorized to delete tickets', 401);
+    private function requireDeletePermission($key): void
+    {
+        $this->permissionChecker->require($key, Permission::DeleteTickets, 'delete tickets');
     }
 
     /**
@@ -1020,7 +803,7 @@ class ExtendedTicketApiController extends TicketApiController {
         // Status filter: Accept both ID (numeric) and name (string)
         $statusFilter = null;
         if (isset($params['status'])) {
-            $statusParam = trim($params['status']);
+            $statusParam = is_string($params['status']) ? trim($params['status']) : $params['status'];
 
             if (is_numeric($statusParam)) {
                 // Numeric: use as ID directly
@@ -1043,12 +826,12 @@ class ExtendedTicketApiController extends TicketApiController {
         // Department filter: Accept both ID (numeric), name (string), or path (string with /)
         $deptFilter = null;
         if (isset($params['department'])) {
-            $deptParam = trim($params['department']);
+            $deptParam = is_string($params['department']) ? trim($params['department']) : $params['department'];
 
             if (is_numeric($deptParam)) {
                 // Numeric: use as ID directly
                 $deptFilter = (int)$deptParam;
-            } elseif (strpos($deptParam, '/') !== false) {
+            } elseif (is_string($deptParam) && strpos($deptParam, '/') !== false) {
                 // Path format: "Development / osTicket"
                 $parts = array_map('trim', explode('/', $deptParam));
 
