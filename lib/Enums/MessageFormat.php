@@ -1,14 +1,17 @@
 <?php
 /**
- * Format Enum
+ * MessageFormat Enum
  *
  * Defines allowed message formats for ticket creation/updates.
  * Replaces magic strings like 'markdown', 'html', 'text'.
+ *
+ * NOTE: Named MessageFormat (not Format) to avoid conflict with osTicket's
+ * built-in Format class in include/class.format.php
  */
 
 declare(strict_types=1);
 
-enum Format: string
+enum MessageFormat: string
 {
     case Markdown = 'markdown';
     case Html = 'html';

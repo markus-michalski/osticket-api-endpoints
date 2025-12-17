@@ -17,7 +17,7 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../Enums/Format.php';
+require_once __DIR__ . '/../Enums/MessageFormat.php';
 
 class TicketValidatorService
 {
@@ -30,13 +30,13 @@ class TicketValidatorService
      */
     public function validateFormat(?string $format): string
     {
-        $formatEnum = Format::tryFromString($format);
+        $formatEnum = MessageFormat::tryFromString($format);
 
         if ($formatEnum === null) {
             if ($format === null || trim($format) === '') {
                 throw new Exception('Format cannot be empty', 400);
             }
-            throw new Exception('Invalid format. Allowed: ' . Format::allowedList(), 400);
+            throw new Exception('Invalid format. Allowed: ' . MessageFormat::allowedList(), 400);
         }
 
         return $formatEnum->value;
