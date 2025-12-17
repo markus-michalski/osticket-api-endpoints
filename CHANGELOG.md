@@ -16,6 +16,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Nothing yet
 
+## [2.0.0] - 2025-12-17
+
+### Changed
+- Update PHP requirement to 8.1+ and test count to 168
+- update package validation for new services and enums
+- extract TicketService for CRUD operations
+- extract validation & permission logic into services
+- Extract ApiBootstrap and modernize to PHP 8.1+
+- added zip to .gitignore
+- Auto-sync from Markus-PC
+
+### Fixed
+- Update CI matrix to PHP 8.2+ (PHPUnit 11 requirement)
+- Restore original composer.json for PHP 7.4+ compatibility
+- Restore original composer.lock for PHP 8.1 compatibility
+
 ## [1.0.0] - 2025-11-08
 
 ### Added
