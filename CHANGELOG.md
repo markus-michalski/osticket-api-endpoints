@@ -16,6 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Nothing yet
 
+## [2.0.1] - 2025-12-17
+
+### Fixed
+- Rename Format enum to MessageFormat to avoid osTicket conflict
+- Load main.inc.php directly in API files for correct osTicket bootstrap
+- Use SCRIPT_FILENAME for main.inc.php path calculation
+- Correct dirname level to 4 for main.inc.php path
+- Correct dirname level in ApiBootstrap for osTicket main.inc.php
+
 ## [2.0.0] - 2025-12-17
 
 ### Changed
