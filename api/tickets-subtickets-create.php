@@ -20,102 +20,43 @@
  * {
  *   "success": true,
  *   "message": "Subticket relationship created successfully",
- *   "parent": {
- *     "ticket_id": 100,
- *     "number": "680284",
- *     "subject": "Parent Ticket",
- *     "status": "Open"
- *   },
- *   "child": {
- *     "ticket_id": 101,
- *     "number": "680285",
- *     "subject": "Child Ticket",
- *     "status": "Open"
- *   }
+ *   "parent": { ... },
+ *   "child": { ... }
  * }
  *
  * Error Codes:
- * - 400: Invalid ticket numbers or self-link attempt
+ * - 400: Invalid ticket numbers, missing childId, or self-link attempt
  * - 403: API key not authorized (permission or department access)
  * - 404: Parent or child ticket not found
- * - 409: Child already has a parent
+ * - 422: Child already has a parent (use 422 because osTicket doesn't support 409)
  */
 
-// Require API bootstrap
-require_once('../main.inc.php');
+declare(strict_types=1);
 
-if (!defined('INCLUDE_DIR'))
-    die('Fatal Error: Cannot access API outside of osTicket');
+require_once __DIR__ . '/../include/plugins/api-endpoints/lib/ApiBootstrap.php';
 
-require_once(INCLUDE_DIR.'class.api.php');
-require_once(INCLUDE_DIR.'class.ticket.php');
+$bootstrap = ApiBootstrap::initialize();
 
-// Load SubticketApiController
-$plugin_path = INCLUDE_DIR.'plugins/api-endpoints/';
-if (file_exists($plugin_path.'controllers/SubticketApiController.php')) {
-    require_once($plugin_path.'controllers/SubticketApiController.php');
-} else {
-    Http::response(500, 'API Endpoints Plugin not properly installed', 'text/plain');
-    exit;
-}
-
-// Load SubticketPlugin class (required by SubticketApiController)
-$subticket_plugin_path = INCLUDE_DIR.'plugins/subticket-manager/';
-if (file_exists($subticket_plugin_path.'class.SubticketPlugin.php')) {
-    require_once($subticket_plugin_path.'class.SubticketPlugin.php');
-}
-
-// Parse path info to get parent ticket number
-// URL: /api/tickets-subtickets-create.php/680284.json -> path_info = /680284.json
-$path_info = Osticket::get_path_info();
-
-// Extract ticket number and format
-// Pattern: /{ticket_number}.{format}
-if (!preg_match('#^/(?P<number>[^/.]+)\.(?P<format>json|xml)$#', $path_info, $matches)) {
-    Http::response(400, 'Invalid URL format. Expected: /api/tickets-subtickets-create.php/{parent_ticket_number}.json', 'text/plain');
-    exit;
-}
-
-$parentNumber = $matches['number'];
-$format = $matches['format'];
+// Parse parent ticket number and format from path info
+$params = $bootstrap->parsePathInfo(
+    '#^/(?P<number>[^/.]+)\.(?P<format>json|xml)$#',
+    'Invalid URL format. Expected: /api/tickets-subtickets-create.php/{parent_ticket_number}.json'
+);
 
 // Only accept POST method
-$method = $_SERVER['REQUEST_METHOD'];
-if ($method !== 'POST') {
-    Http::response(405, 'Method Not Allowed. Use POST', 'text/plain');
-    exit;
-}
+$bootstrap->requireMethod('POST');
 
 // Parse JSON body
-$input = file_get_contents('php://input');
-$data = json_decode($input, true);
+$data = $bootstrap->parseJsonBody(required: true);
 
-if (json_last_error() !== JSON_ERROR_NONE) {
-    Http::response(400, 'Invalid JSON in request body', 'text/plain');
-    exit;
-}
-
-// Extract child ticket number from POST body
+// Validate childId
 $childNumber = isset($data['childId']) ? (string)$data['childId'] : '';
-
 if (empty($childNumber)) {
-    Http::response(400, 'Missing childId in request body', 'text/plain');
-    exit;
+    ApiBootstrap::sendErrorResponse(400, 'Missing childId in request body');
 }
 
-// Create controller and create subticket link
-try {
-    $controller = new SubticketApiController(null);
-    $result = $controller->createLink($parentNumber, $childNumber);
-
-    // Return success (format is always JSON for POST)
-    Http::response(200, json_encode($result, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE), 'application/json');
-
-} catch (Exception $e) {
-    // Handle errors
-    $code = $e->getCode();
-    if ($code < 100 || $code > 599) {
-        $code = 400; // Fallback to Bad Request for invalid codes
-    }
-    Http::response($code, $e->getMessage(), 'text/plain');
-}
+// Execute with standardized error handling
+$bootstrap->execute(function() use ($bootstrap, $params, $childNumber) {
+    $controller = $bootstrap->getSubticketController();
+    return $controller->createLink($params['number'], $childNumber);
+});

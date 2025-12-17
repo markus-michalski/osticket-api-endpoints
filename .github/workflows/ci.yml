@@ -12,8 +12,9 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false
       matrix:
-        php-version: ['7.4', '8.0', '8.1', '8.2', '8.3']
+        php-version: ['8.2', '8.3', '8.4']
 
     steps:
       - name: Checkout code
@@ -107,4 +108,13 @@ jobs:
         run: |
           echo "Checking library files..."
           test -f lib/XmlHelper.php || { echo "Error: XmlHelper not found"; exit 1; }
+          test -f lib/ApiBootstrap.php || { echo "Error: ApiBootstrap not found"; exit 1; }
+          test -d lib/Services || { echo "Error: lib/Services/ directory not found"; exit 1; }
+          test -f lib/Services/TicketService.php || { echo "Error: TicketService not found"; exit 1; }
+          test -f lib/Services/TicketValidatorService.php || { echo "Error: TicketValidatorService not found"; exit 1; }
+          test -f lib/Services/PermissionChecker.php || { echo "Error: PermissionChecker not found"; exit 1; }
+          test -d lib/Enums || { echo "Error: lib/Enums/ directory not found"; exit 1; }
+          test -f lib/Enums/Format.php || { echo "Error: Format enum not found"; exit 1; }
+          test -f lib/Enums/Permission.php || { echo "Error: Permission enum not found"; exit 1; }
+          test -f lib/Enums/SortField.php || { echo "Error: SortField enum not found"; exit 1; }
           echo "✓ All library files present"

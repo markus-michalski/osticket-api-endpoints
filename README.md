@@ -15,7 +15,7 @@ Perfect for integrations that need granular control beyond osTicket's standard A
 - ✅ **Granular Permissions** - Fine-grained API key permissions (create, read, update, search, delete, subtickets)
 - ✅ **Name-Based Filters** - Use human-readable names instead of IDs
 - ✅ **No Core Modifications** - Signal-based architecture (update-safe)
-- ✅ **TDD-Tested** - 77 tests with comprehensive coverage (64 unit + 13 integration)
+- ✅ **TDD-Tested** - 168 tests with comprehensive coverage
 
 ## Use Cases
 
@@ -29,7 +29,7 @@ Perfect for integrations that need granular control beyond osTicket's standard A
 ## Requirements
 
 - osTicket **1.18.x**
-- PHP **7.4+** (recommended: PHP 8.1+)
+- PHP **8.1+** (uses modern PHP features: enums, union types, named arguments)
 - **Optional**: [Markdown Support Plugin](https://github.com/markus-michalski/osticket-plugins/tree/main/markdown-support) for Markdown rendering
 
 ## Installation

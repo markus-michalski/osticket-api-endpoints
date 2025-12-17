@@ -15,12 +15,7 @@
  * {
  *   "success": true,
  *   "message": "Subticket relationship removed successfully",
- *   "child": {
- *     "ticket_id": 200,
- *     "number": "680285",
- *     "subject": "Child Ticket",
- *     "status": "Open"
- *   }
+ *   "child": { ... }
  * }
  *
  * Error Codes:
@@ -29,64 +24,23 @@
  * - 404: Child ticket not found or child has no parent
  */
 
-// Require API bootstrap
-require_once('../main.inc.php');
+declare(strict_types=1);
 
-if (!defined('INCLUDE_DIR'))
-    die('Fatal Error: Cannot access API outside of osTicket');
+require_once __DIR__ . '/../include/plugins/api-endpoints/lib/ApiBootstrap.php';
 
-require_once(INCLUDE_DIR.'class.api.php');
-require_once(INCLUDE_DIR.'class.ticket.php');
+$bootstrap = ApiBootstrap::initialize();
 
-// Load SubticketApiController
-$plugin_path = INCLUDE_DIR.'plugins/api-endpoints/';
-if (file_exists($plugin_path.'controllers/SubticketApiController.php')) {
-    require_once($plugin_path.'controllers/SubticketApiController.php');
-} else {
-    Http::response(500, 'API Endpoints Plugin not properly installed', 'text/plain');
-    exit;
-}
-
-// Load SubticketPlugin class (required by SubticketApiController)
-$subticket_plugin_path = INCLUDE_DIR.'plugins/subticket-manager/';
-if (file_exists($subticket_plugin_path.'class.SubticketPlugin.php')) {
-    require_once($subticket_plugin_path.'class.SubticketPlugin.php');
-}
-
-// Parse path info to get child ticket number
-// URL: /api/tickets-subtickets-unlink.php/680285.json -> path_info = /680285.json
-$path_info = Osticket::get_path_info();
-
-// Extract ticket number and format
-// Pattern: /{ticket_number}.{format}
-if (!preg_match('#^/(?P<number>[^/.]+)\.(?P<format>json|xml)$#', $path_info, $matches)) {
-    Http::response(400, 'Invalid URL format. Expected: /api/tickets-subtickets-unlink.php/{child_ticket_number}.json', 'text/plain');
-    exit;
-}
-
-$childNumber = $matches['number'];
-$format = $matches['format'];
+// Parse child ticket number and format from path info
+$params = $bootstrap->parsePathInfo(
+    '#^/(?P<number>[^/.]+)\.(?P<format>json|xml)$#',
+    'Invalid URL format. Expected: /api/tickets-subtickets-unlink.php/{child_ticket_number}.json'
+);
 
 // Only accept DELETE method
-$method = $_SERVER['REQUEST_METHOD'];
-if ($method !== 'DELETE') {
-    Http::response(405, 'Method Not Allowed. Use DELETE', 'text/plain');
-    exit;
-}
+$bootstrap->requireMethod('DELETE');
 
-// Create controller and unlink subticket
-try {
-    $controller = new SubticketApiController(null);
-    $result = $controller->unlinkChild($childNumber);
-
-    // Return success (format is always JSON for DELETE)
-    Http::response(200, json_encode($result, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE), 'application/json');
-
-} catch (Exception $e) {
-    // Handle errors
-    $code = $e->getCode();
-    if ($code < 100 || $code > 599) {
-        $code = 400; // Fallback to Bad Request for invalid codes
-    }
-    Http::response($code, $e->getMessage(), 'text/plain');
-}
+// Execute with standardized error handling
+$bootstrap->execute(function() use ($bootstrap, $params) {
+    $controller = $bootstrap->getSubticketController();
+    return $controller->unlinkChild($params['number']);
+});
