@@ -85,7 +85,7 @@ class ApiBootstrap
      */
     public function parsePathInfo(string $pattern, ?string $errorMessage = null): array
     {
-        $pathInfo = Osticket::get_path_info();
+        $pathInfo = Osticket::get_path_info() ?? '';
 
         if (!preg_match($pattern, $pathInfo, $matches)) {
             $message = $errorMessage ?? 'Invalid URL format';
