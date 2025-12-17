@@ -39,14 +39,20 @@ class ApiBootstrap
      * - Validates INCLUDE_DIR
      * - Loads required classes
      *
+     * IMPORTANT: API files are deployed to /api/ directory.
+     * This method uses $_SERVER['SCRIPT_FILENAME'] to determine the correct path
+     * to main.inc.php regardless of where ApiBootstrap.php is located.
+     *
      * @return self
      * @throws RuntimeException If initialization fails
      */
     public static function initialize(): self
     {
         // Load osTicket bootstrap
-        // Path: lib/ → api-endpoints/ → plugins/ → include/ → html/main.inc.php
-        require_once dirname(__DIR__, 4) . '/main.inc.php';
+        // API files are in /api/, main.inc.php is in osTicket root (parent of /api/)
+        // Use SCRIPT_FILENAME to get the actual executing script's path
+        $scriptDir = dirname($_SERVER['SCRIPT_FILENAME']);
+        require_once $scriptDir . '/../main.inc.php';
 
         if (!defined('INCLUDE_DIR')) {
             self::sendErrorResponse(500, 'Fatal Error: Cannot access API outside of osTicket');
