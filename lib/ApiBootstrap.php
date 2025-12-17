@@ -45,7 +45,8 @@ class ApiBootstrap
     public static function initialize(): self
     {
         // Load osTicket bootstrap
-        require_once dirname(__DIR__, 2) . '/main.inc.php';
+        // Path: lib/ApiBootstrap.php → api-endpoints → plugins → include → main.inc.php
+        require_once dirname(__DIR__, 3) . '/main.inc.php';
 
         if (!defined('INCLUDE_DIR')) {
             self::sendErrorResponse(500, 'Fatal Error: Cannot access API outside of osTicket');
