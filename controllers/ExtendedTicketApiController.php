@@ -285,8 +285,9 @@ class ExtendedTicketApiController extends TicketApiController {
             // Only update if different (normalize both for comparison)
             $currentDueDate = $ticket->getDueDate();
             if ($validatedDueDate !== $currentDueDate) {
-                // osTicket stores duedate via ht array
-                $ticket->ht['duedate'] = $validatedDueDate;
+                // osTicket uses VerySimpleModel ORM - must set as property, not via ht array
+                // Setting $ticket->duedate marks it as "dirty" for save()
+                $ticket->duedate = $validatedDueDate;
                 if ($ticket->save()) {
                     $updated = true;
                 }

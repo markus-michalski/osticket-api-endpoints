@@ -192,6 +192,26 @@ if (!class_exists('Ticket')) {
         private $customData;
         public $ht = [];
 
+        /**
+         * Magic setter to emulate VerySimpleModel ORM behavior
+         * Allows setting private properties like $ticket->duedate = $value
+         */
+        public function __set($name, $value) {
+            if (property_exists($this, $name)) {
+                $this->$name = $value;
+            }
+        }
+
+        /**
+         * Magic getter to emulate VerySimpleModel ORM behavior
+         */
+        public function __get($name) {
+            if (property_exists($this, $name)) {
+                return $this->$name;
+            }
+            return null;
+        }
+
         public function __construct($data) {
             $this->id = $data['ticket_id'] ?? $data['id'];
             $this->number = $data['number'];
