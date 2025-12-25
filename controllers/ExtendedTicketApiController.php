@@ -2,6 +2,15 @@
 
 declare(strict_types=1);
 
+// Stub for external plugin class (Intelephense type-checking)
+if (false) {
+    /** @noinspection PhpMultipleClassDeclarationsInspection */
+    class WildcardApiController {
+        /** @return bool */
+        public function requireApiKey() { return true; }
+    }
+}
+
 // Only require if not in test environment
 if (!class_exists('TicketApiController')) {
     require_once(INCLUDE_DIR . 'api.tickets.php');
@@ -58,7 +67,7 @@ class ExtendedTicketApiController extends TicketApiController {
         if (file_exists(INCLUDE_DIR . 'plugins/api-key-wildcard/api.wildcard.inc.php')) {
             require_once INCLUDE_DIR . 'plugins/api-key-wildcard/api.wildcard.inc.php';
             if (class_exists('WildcardApiController')) {
-                $validator = new WildcardApiController();
+                $validator = new \WildcardApiController();
                 return $validator->requireApiKey();
             }
         }
@@ -104,6 +113,7 @@ class ExtendedTicketApiController extends TicketApiController {
         $ticket = $this->createTicket($data);
 
         if ($ticket) {
+            /** @disregard P1013 (Plugin class may not exist in test environment) */
             $this->response(201, $ticket->getNumber());
         } else {
             $this->exerr(500, __("Unknown error"));
@@ -263,6 +273,21 @@ class ExtendedTicketApiController extends TicketApiController {
             $staffId = $this->validator->validateStaffId($data['staffId']);
             if ($ticket->getStaffId() != $staffId) {
                 if ($ticket->setStaffId($staffId)) {
+                    $updated = true;
+                }
+            }
+        }
+
+        // Update dueDate if provided
+        if (array_key_exists('dueDate', $data)) {
+            $validatedDueDate = $this->validator->validateDueDate($data['dueDate']);
+
+            // Only update if different (normalize both for comparison)
+            $currentDueDate = $ticket->getDueDate();
+            if ($validatedDueDate !== $currentDueDate) {
+                // osTicket stores duedate via ht array
+                $ticket->ht['duedate'] = $validatedDueDate;
+                if ($ticket->save()) {
                     $updated = true;
                 }
             }

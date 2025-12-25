@@ -159,17 +159,18 @@ Returns the created ticket number as plain text.
 
 ### Updateable Properties
 
-| Parameter            | Type       | Description                                                       | Example                                  |
-| -------------------- | ---------- | ----------------------------------------------------------------- | ---------------------------------------- |
-| `departmentId`       | int/string | Move ticket to department                                         | `5` or `"Sales"`                         |
-| `statusId`           | int/string | Change ticket status                                              | `1` or `"Open"`                          |
-| `topicId`            | int        | Change help topic                                                 | `3`                                      |
-| `slaId`              | int        | Assign SLA plan                                                   | `1`                                      |
-| `staffId`            | int        | Assign to staff member                                            | `5`                                      |
-| `parentTicketNumber` | string     | Make ticket a subticket                                           | `"123456"`                               |
-| `note`               | string     | Add internal note (staff only)                                    | `"Investigated issue, found root cause"` |
-| `noteTitle`          | string     | Title for internal note (optional)                                | `"Bug Investigation"`                    |
-| `noteFormat`         | string     | Format for note: `text`, `html`, `markdown` (default: `markdown`) | `"markdown"`                             |
+| Parameter            | Type        | Description                                                       | Example                                   |
+| -------------------- | ----------- | ----------------------------------------------------------------- | ----------------------------------------- |
+| `departmentId`       | int/string  | Move ticket to department                                         | `5` or `"Sales"`                          |
+| `statusId`           | int/string  | Change ticket status                                              | `1` or `"Open"`                           |
+| `topicId`            | int         | Change help topic                                                 | `3`                                       |
+| `slaId`              | int         | Assign SLA plan                                                   | `1`                                       |
+| `staffId`            | int         | Assign to staff member                                            | `5`                                       |
+| `dueDate`            | string/null | Set due date (ISO 8601), null to clear                            | `"2025-01-31"` or `"2025-01-31T17:30:00"` |
+| `parentTicketNumber` | string      | Make ticket a subticket                                           | `"123456"`                                |
+| `note`               | string      | Add internal note (staff only)                                    | `"Investigated issue, found root cause"` |
+| `noteTitle`          | string      | Title for internal note (optional)                                | `"Bug Investigation"`                     |
+| `noteFormat`         | string      | Format for note: `text`, `html`, `markdown` (default: `markdown`) | `"markdown"`                              |
 
 ### Request Examples
 
@@ -263,6 +264,39 @@ curl -X PATCH "https://yourdomain.com/api/tickets-update.php/191215.json" \
   -d '{
     "statusId": "Resolved",
     "note": "Issue resolved via API. Customer notified via email."
+  }'
+```
+
+#### Set Due Date
+
+```bash
+curl -X PATCH "https://yourdomain.com/api/tickets-update.php/191215.json" \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "dueDate": "2025-01-31"
+  }'
+```
+
+#### Set Due Date with Time
+
+```bash
+curl -X PATCH "https://yourdomain.com/api/tickets-update.php/191215.json" \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "dueDate": "2025-01-31T17:30:00"
+  }'
+```
+
+#### Clear Due Date
+
+```bash
+curl -X PATCH "https://yourdomain.com/api/tickets-update.php/191215.json" \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "dueDate": null
   }'
 ```
 

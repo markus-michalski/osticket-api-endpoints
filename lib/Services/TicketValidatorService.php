@@ -311,6 +311,41 @@ class TicketValidatorService
     }
 
     /**
+     * Validate and parse due date
+     *
+     * Accepts various date formats:
+     * - ISO 8601 date: "2025-01-31"
+     * - ISO 8601 datetime: "2025-01-31T17:30:00"
+     * - ISO 8601 with timezone: "2025-01-31T17:30:00+01:00"
+     * - MySQL datetime: "2025-01-31 17:30:00"
+     * - null to clear due date
+     *
+     * @param string|null $dueDate Date string or null
+     * @return string|null Normalized MySQL datetime string or null
+     * @throws Exception If date format is invalid (400)
+     */
+    public function validateDueDate(?string $dueDate): ?string
+    {
+        // null clears the due date
+        if ($dueDate === null || trim($dueDate) === '') {
+            return null;
+        }
+
+        // Try to parse the date
+        try {
+            $dateTime = new DateTime($dueDate);
+
+            // Return in MySQL datetime format
+            return $dateTime->format('Y-m-d H:i:s');
+        } catch (Exception $e) {
+            throw new Exception(
+                'Invalid date format for dueDate. Expected ISO 8601 format (e.g., "2025-01-31" or "2025-01-31T17:30:00")',
+                400
+            );
+        }
+    }
+
+    /**
      * Check if Markdown Support Plugin is active
      *
      * @return bool True if plugin is active
