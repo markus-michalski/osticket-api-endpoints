@@ -314,6 +314,11 @@ if (!class_exists('Ticket')) {
             return true;
         }
 
+        public function setDueDate($duedate) {
+            $this->duedate = $duedate;
+            return true;
+        }
+
         public function save() {
             // Sync ht array changes to properties (for ExtendedTicketApiController updates)
             if (isset($this->ht['topic_id'])) {
@@ -338,6 +343,9 @@ if (!class_exists('Ticket')) {
             }
             if (isset($this->ht['team_id'])) {
                 $this->teamId = $this->ht['team_id'];
+            }
+            if (array_key_exists('duedate', $this->ht)) {
+                $this->duedate = $this->ht['duedate'];
             }
             return true;
         }

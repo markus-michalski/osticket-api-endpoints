@@ -820,4 +820,207 @@ class UpdateTicketEndpointTest extends TestCase {
             'note' => 'This should fail'
         ]);
     }
+
+    // =========================================================================
+    // Due Date Tests
+    // =========================================================================
+
+    /**
+     * Test successful due date update with valid ISO 8601 date
+     */
+    public function testUpdateTicketDueDate(): void {
+        $ticket = new Ticket([
+            'id' => 2001,
+            'number' => '2001',
+            'subject' => 'Due Date Test',
+            'duedate' => null
+        ]);
+        Ticket::$mockDataByNumber['2001'] = $ticket;
+
+        $apiKey = new API([
+            'key' => 'test-api-key',
+            'can_update_tickets' => true
+        ]);
+        API::$mockData['test-key'] = $apiKey;
+
+        $controller = new ExtendedTicketApiController();
+        $result = $controller->update('2001', [
+            'dueDate' => '2025-01-31'
+        ]);
+
+        $this->assertEquals(2001, $result->getId());
+        $this->assertEquals('2025-01-31 00:00:00', $result->getDueDate());
+    }
+
+    /**
+     * Test due date update with datetime (includes time)
+     */
+    public function testUpdateTicketDueDateWithTime(): void {
+        $ticket = new Ticket([
+            'id' => 2002,
+            'number' => '2002',
+            'subject' => 'Due Date Test',
+            'duedate' => null
+        ]);
+        Ticket::$mockDataByNumber['2002'] = $ticket;
+
+        $apiKey = new API([
+            'key' => 'test-api-key',
+            'can_update_tickets' => true
+        ]);
+        API::$mockData['test-key'] = $apiKey;
+
+        $controller = new ExtendedTicketApiController();
+        $result = $controller->update('2002', [
+            'dueDate' => '2025-01-31 17:30:00'
+        ]);
+
+        $this->assertEquals(2002, $result->getId());
+        $this->assertEquals('2025-01-31 17:30:00', $result->getDueDate());
+    }
+
+    /**
+     * Test clearing due date by setting null
+     */
+    public function testClearDueDate(): void {
+        $ticket = new Ticket([
+            'id' => 2003,
+            'number' => '2003',
+            'subject' => 'Due Date Test',
+            'duedate' => '2025-01-31 23:59:59'
+        ]);
+        Ticket::$mockDataByNumber['2003'] = $ticket;
+
+        $apiKey = new API([
+            'key' => 'test-api-key',
+            'can_update_tickets' => true
+        ]);
+        API::$mockData['test-key'] = $apiKey;
+
+        $controller = new ExtendedTicketApiController();
+        $result = $controller->update('2003', [
+            'dueDate' => null
+        ]);
+
+        $this->assertEquals(2003, $result->getId());
+        $this->assertNull($result->getDueDate());
+    }
+
+    /**
+     * Test invalid date format is rejected
+     */
+    public function testRejectsInvalidDateFormat(): void {
+        $ticket = new Ticket([
+            'id' => 2004,
+            'number' => '2004',
+            'subject' => 'Due Date Test',
+            'duedate' => null
+        ]);
+        Ticket::$mockDataByNumber['2004'] = $ticket;
+
+        $apiKey = new API([
+            'key' => 'test-api-key',
+            'can_update_tickets' => true
+        ]);
+        API::$mockData['test-key'] = $apiKey;
+
+        $controller = new ExtendedTicketApiController();
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionCode(400);
+        $this->expectExceptionMessage('Invalid date format');
+
+        $controller->update('2004', [
+            'dueDate' => 'not-a-date'
+        ]);
+    }
+
+    /**
+     * Test due date update combined with status update
+     */
+    public function testDueDateWithStatusUpdate(): void {
+        $openStatus = new TicketStatus(['id' => 1, 'name' => 'Open']);
+        TicketStatus::$mockData[1] = $openStatus;
+
+        $ticket = new Ticket([
+            'id' => 2005,
+            'number' => '2005',
+            'subject' => 'Due Date Test',
+            'status_id' => 1,
+            'duedate' => null
+        ]);
+        Ticket::$mockDataByNumber['2005'] = $ticket;
+
+        $apiKey = new API([
+            'key' => 'test-api-key',
+            'can_update_tickets' => true
+        ]);
+        API::$mockData['test-key'] = $apiKey;
+
+        $controller = new ExtendedTicketApiController();
+        $result = $controller->update('2005', [
+            'dueDate' => '2025-02-15',
+            'statusId' => 1
+        ]);
+
+        $this->assertEquals(2005, $result->getId());
+        $this->assertEquals('2025-02-15 00:00:00', $result->getDueDate());
+        $this->assertEquals(1, $result->getStatusId());
+    }
+
+    /**
+     * Test that updating with same due date is idempotent
+     */
+    public function testDueDateUpdateIsIdempotent(): void {
+        $ticket = new Ticket([
+            'id' => 2006,
+            'number' => '2006',
+            'subject' => 'Due Date Test',
+            'duedate' => '2025-01-31 00:00:00'
+        ]);
+        Ticket::$mockDataByNumber['2006'] = $ticket;
+
+        $apiKey = new API([
+            'key' => 'test-api-key',
+            'can_update_tickets' => true
+        ]);
+        API::$mockData['test-key'] = $apiKey;
+
+        $controller = new ExtendedTicketApiController();
+        $result = $controller->update('2006', [
+            'dueDate' => '2025-01-31' // Same date
+        ]);
+
+        $this->assertEquals(2006, $result->getId());
+        $this->assertEquals('2025-01-31 00:00:00', $result->getDueDate());
+    }
+
+    /**
+     * Test ISO 8601 format with timezone is handled
+     */
+    public function testDueDateWithTimezone(): void {
+        $ticket = new Ticket([
+            'id' => 2007,
+            'number' => '2007',
+            'subject' => 'Due Date Test',
+            'duedate' => null
+        ]);
+        Ticket::$mockDataByNumber['2007'] = $ticket;
+
+        $apiKey = new API([
+            'key' => 'test-api-key',
+            'can_update_tickets' => true
+        ]);
+        API::$mockData['test-key'] = $apiKey;
+
+        $controller = new ExtendedTicketApiController();
+        $result = $controller->update('2007', [
+            'dueDate' => '2025-01-31T17:30:00+01:00'
+        ]);
+
+        $this->assertEquals(2007, $result->getId());
+        // Stored in UTC or server timezone, depending on osTicket config
+        $this->assertNotNull($result->getDueDate());
+        $this->assertStringContainsString('2025-01-31', $result->getDueDate());
+    }
 }
