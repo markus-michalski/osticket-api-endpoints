@@ -190,6 +190,7 @@ if (!class_exists('Ticket')) {
         private $userName;
         private $userEmail;
         private $customData;
+        public $ht = [];
 
         public function __construct($data) {
             $this->id = $data['ticket_id'] ?? $data['id'];
