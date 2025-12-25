@@ -16,6 +16,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Nothing yet
 
+## [2.1.0] - 2025-12-25
+
+### Added
+- Add dueDate parameter to ticket update endpoint
+
+### Changed
+- Add .phpunit.cache/ to gitignore
+
+### Fixed
+- Initialize $ht property in mock Ticket class
+
 ## [2.0.2] - 2025-12-17
 
 ### Fixed
