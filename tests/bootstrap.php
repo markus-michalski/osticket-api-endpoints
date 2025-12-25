@@ -285,6 +285,12 @@ if (!class_exists('Ticket')) {
         public function getCloseDate() { return $this->closed; }
         public function isClosed() { return $this->closed !== null; }
         public function isOverdue() { return $this->isOverdue; }
+        public function clearOverdue($save = true) {
+            $this->isOverdue = false;
+            if ($save) {
+                $this->save();
+            }
+        }
         public function isAnswered() { return $this->isAnswered; }
         public function getSource() { return $this->source; }
         public function getIP() { return $this->ip; }

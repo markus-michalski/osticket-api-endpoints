@@ -288,6 +288,15 @@ class ExtendedTicketApiController extends TicketApiController {
                 // osTicket uses VerySimpleModel ORM - must set as property, not via ht array
                 // Setting $ticket->duedate marks it as "dirty" for save()
                 $ticket->duedate = $validatedDueDate;
+
+                // Clear overdue flag if setting a future due date
+                if ($validatedDueDate !== null && $ticket->isOverdue()) {
+                    $dueDateTimestamp = strtotime($validatedDueDate);
+                    if ($dueDateTimestamp > time()) {
+                        $ticket->clearOverdue(false);
+                    }
+                }
+
                 if ($ticket->save()) {
                     $updated = true;
                 }
