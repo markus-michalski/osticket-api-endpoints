@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Nothing yet
 
+## [2.1.2] - 2025-12-25
+
+### Fixed
+- clear overdue flag when setting future due date
+
 ## [2.1.1] - 2025-12-25
 
 ### Fixed
