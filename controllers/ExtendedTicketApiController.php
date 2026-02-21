@@ -323,6 +323,11 @@ class ExtendedTicketApiController extends TicketApiController {
                 'staffId' => 0  // System/API
             ];
 
+            // Pass attachments to note (data URI format from API)
+            if (!empty($data['attachments']) && is_array($data['attachments'])) {
+                $noteVars['attachments'] = $data['attachments'];
+            }
+
             if ($ticket->postNote($noteVars, $errors, false, false)) {
                 $updated = true;
             } else {
