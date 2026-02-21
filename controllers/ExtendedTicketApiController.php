@@ -323,9 +323,12 @@ class ExtendedTicketApiController extends TicketApiController {
                 'staffId' => 0  // System/API
             ];
 
-            // Pass attachments to note (data URI format from API)
+            // Convert data-URI attachments to format expected by postNote()
+            // API sends: [{"filename": "data:mime;base64,content"}]
+            // postNote() needs: [["name" => "filename", "type" => "mime", "data" => "content", "encoding" => "base64"]]
+            // Same conversion as ApiJsonDataParser::fixup() does for ticket creation
             if (!empty($data['attachments']) && is_array($data['attachments'])) {
-                $noteVars['attachments'] = $data['attachments'];
+                $noteVars['attachments'] = self::convertDataUriAttachments($data['attachments']);
             }
 
             if ($ticket->postNote($noteVars, $errors, false, false)) {
@@ -339,6 +342,59 @@ class ExtendedTicketApiController extends TicketApiController {
         }
 
         return $ticket;
+    }
+
+    // =========================================================================
+    // Attachment Helpers
+    // =========================================================================
+
+    /**
+     * Convert data-URI attachments to the format AttachmentFile::create() expects.
+     *
+     * API sends:  [{"filename.txt": "data:text/plain;base64,SGVsbG8="}]
+     * postNote needs: [["name" => "filename.txt", "type" => "text/plain",
+     *                   "data" => "SGVsbG8=", "encoding" => "base64"]]
+     *
+     * For ticket creation, ApiJsonDataParser::fixup() does this conversion
+     * internally. For notes we must do it ourselves.
+     *
+     * @param array $attachments Data-URI formatted attachments from API
+     * @return array Attachments in osTicket internal format
+     */
+    private static function convertDataUriAttachments(array $attachments): array
+    {
+        $converted = [];
+        foreach ($attachments as $info) {
+            if (!is_array($info)) {
+                continue;
+            }
+            // Each element is {"filename": "data:mime;base64,content"}
+            $dataUri = reset($info);
+            $filename = key($info);
+            if (!$dataUri || !$filename || !is_string($dataUri)) {
+                continue;
+            }
+
+            // Parse RFC 2397 data URI manually
+            // Format: data:[<mediatype>][;base64],<data>
+            if (!preg_match('#^data:([^;,]+)?(?:;(base64))?,(.*)$#s', $dataUri, $m)) {
+                continue;
+            }
+
+            $entry = [
+                'name' => $filename,
+                'type' => $m[1] ?: 'application/octet-stream',
+                'data' => $m[3],
+            ];
+
+            // Tell AttachmentFile::create() to base64-decode the data
+            if (!empty($m[2])) {
+                $entry['encoding'] = 'base64';
+            }
+
+            $converted[] = $entry;
+        }
+        return $converted;
     }
 
     // =========================================================================
