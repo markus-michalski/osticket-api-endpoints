@@ -13,9 +13,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Nothing yet
 
+### Deprecated
+- Nothing yet
+
+### Removed
+- Nothing yet
+
 ### Fixed
 - Nothing yet
 
+### Security
+- Nothing yet
+
+## [2.2.0] - 2026-02-21
+
+### Added
+- pass attachments to notes in update endpoint
+
+### Changed
+- update README for clarity and remove outdated API documentation
 ## [2.1.2] - 2025-12-25
 
 ### Fixed
@@ -150,3 +166,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove API key from error logs
 - Fix critical vulnerabilities in legacy API endpoints
 
+[2.2.0]: https://github.com/markus-michalski/osticket-api-endpoints/releases/tag/v2.2.0
