@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 - Nothing yet
 
+## [2.2.1] - 2026-02-21
+
+### Fixed
+- convert data-URI attachments for postNote() compatibility
 ## [2.2.0] - 2026-02-21
 
 ### Added
@@ -167,3 +171,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix critical vulnerabilities in legacy API endpoints
 
 [2.2.0]: https://github.com/markus-michalski/osticket-api-endpoints/releases/tag/v2.2.0
+[2.2.1]: https://github.com/markus-michalski/osticket-api-endpoints/releases/tag/v2.2.1
