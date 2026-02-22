@@ -276,7 +276,10 @@ class ApiBootstrap
     }
 
     /**
-     * Send error response and exit
+     * Send error response as JSON and exit
+     *
+     * Returns a JSON object with "error" and "message" fields so that
+     * API clients can reliably parse error details regardless of status code.
      *
      * @param int $code HTTP status code
      * @param string $message Error message
@@ -284,7 +287,12 @@ class ApiBootstrap
      */
     public static function sendErrorResponse(int $code, string $message): never
     {
-        Http::response($code, $message, 'text/plain');
+        $body = json_encode([
+            'error' => true,
+            'message' => $message,
+        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+
+        Http::response($code, $body, 'application/json');
         exit;
     }
 }

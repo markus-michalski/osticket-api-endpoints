@@ -829,6 +829,43 @@ if (!class_exists('SubticketPlugin')) {
     }
 }
 
+// Mock Http class (captures responses instead of sending them)
+if (!class_exists('Http')) {
+    class Http {
+        /** @var array|null Last response captured by the mock */
+        public static ?array $lastResponse = null;
+
+        /**
+         * Whether to throw an exception instead of calling exit()
+         * Set to true in tests so PHPUnit can catch the "exit"
+         */
+        public static bool $throwOnResponse = false;
+
+        public static function response($code, $content = false, $contentType = 'text/html', $charset = 'UTF-8') {
+            self::$lastResponse = [
+                'code' => $code,
+                'content' => $content,
+                'contentType' => $contentType,
+                'charset' => $charset,
+            ];
+
+            if (self::$throwOnResponse) {
+                throw new RuntimeException("Http::response($code)", $code);
+            }
+        }
+
+        public static function header_code_verbose($code) {
+            $map = [200 => '200 OK', 400 => '400 Bad Request', 404 => '404 Not Found', 500 => '500 Internal Server Error'];
+            return $map[$code] ?? "$code";
+        }
+
+        public static function reset() {
+            self::$lastResponse = null;
+            self::$throwOnResponse = false;
+        }
+    }
+}
+
 // Mock translation function
 if (!function_exists('__')) {
     function __($text) {
