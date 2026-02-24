@@ -1,0 +1,1073 @@
+openapi: 3.1.0
+info:
+  title: osTicket API Endpoints
+  version: 2.2.2
+  description: |
+    Extended REST API for osTicket, provided by the **API Endpoints Plugin**.
+
+    Extends the built-in osTicket API with:
+    - **Ticket CRUD** – Create, retrieve, update, delete tickets
+    - **Search** – Filter by status, department, query string with pagination
+    - **Statistics** – Global counts, department & staff breakdowns
+    - **Subticket Management** – Parent/child relationships (requires Subticket Manager Plugin)
+
+    ## Authentication
+
+    All endpoints require an **API Key** sent via the `X-API-Key` header.
+    Each key has granular permissions configured in the osTicket Admin Panel.
+
+    ## Response Formats
+
+    Most GET endpoints support `.json` and `.xml` via the URL extension.
+  contact:
+    name: Markus Michalski
+    url: https://github.com/markus-michalski/osticket-api-endpoints
+  license:
+    name: GPL-2.0
+    url: https://opensource.org/licenses/GPL-2.0
+
+servers:
+  - url: /api
+    description: Relative to osTicket installation
+
+tags:
+  - name: Ticket Management
+    description: Create, retrieve, update, delete, and search tickets
+  - name: Statistics
+    description: Ticket statistics and status lookups
+  - name: Subticket Management
+    description: |
+      Parent-child ticket relationships.
+      Requires **Subticket Manager Plugin** to be installed and active.
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  # ===========================================================================
+  # Ticket Management
+  # ===========================================================================
+
+  /tickets.json:
+    post:
+      operationId: createTicket
+      summary: Create a new ticket
+      description: |
+        Create a new ticket with optional extended parameters including Markdown
+        formatting, department routing, subticket linking, and file attachments.
+
+        The response is the **ticket number as plain text** (not JSON).
+      tags:
+        - Ticket Management
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTicketRequest'
+      responses:
+        '201':
+          description: Ticket created successfully
+          content:
+            text/plain:
+              schema:
+                type: string
+                examples:
+                  - '781258'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+
+  /tickets-get.php/{number}.{format}:
+    get:
+      operationId: getTicket
+      summary: Retrieve a single ticket
+      description: |
+        Get full ticket details including all thread entries (messages, responses, notes).
+
+        Lookup logic: tries `lookupByNumber()` first, then falls back to `lookup()` (by ID).
+      tags:
+        - Ticket Management
+      parameters:
+        - $ref: '#/components/parameters/ticketNumber'
+        - $ref: '#/components/parameters/responseFormat'
+      responses:
+        '200':
+          description: Ticket details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /tickets-update.php/{number}.{format}:
+    patch:
+      operationId: updateTicket
+      summary: Update a ticket
+      description: |
+        Update ticket properties such as status, department, priority, SLA, staff
+        assignment, due date, and add internal notes with attachments.
+
+        Also accepts `PUT` method.
+
+        The response is the **ticket number as plain text** (not JSON).
+      tags:
+        - Ticket Management
+      parameters:
+        - $ref: '#/components/parameters/ticketNumber'
+        - $ref: '#/components/parameters/responseFormat'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTicketRequest'
+      responses:
+        '200':
+          description: Ticket updated successfully
+          content:
+            text/plain:
+              schema:
+                type: string
+                examples:
+                  - '781258'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /tickets-search.php:
+    get:
+      operationId: searchTickets
+      summary: Search tickets
+      description: |
+        Search tickets by query string, status, department, and other filters.
+        Supports pagination and sorting.
+
+        Returns a **direct JSON array** (not wrapped in an object).
+
+        Search results do **not** include thread entries (performance optimization).
+      tags:
+        - Ticket Management
+      parameters:
+        - name: query
+          in: query
+          description: Search in ticket subject (case-insensitive)
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Filter by status name or ID
+          schema:
+            oneOf:
+              - type: string
+              - type: integer
+            examples:
+              - 'Open'
+              - 1
+        - name: department
+          in: query
+          description: |
+            Filter by department name, ID, or path.
+            Path format: `Parent / Child` for nested departments.
+          schema:
+            oneOf:
+              - type: string
+              - type: integer
+            examples:
+              - 'Support'
+              - 'Dev / osTicket'
+              - 5
+        - name: limit
+          in: query
+          description: Maximum results per page (default 20, max 100)
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: offset
+          in: query
+          description: Pagination offset
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+        - name: sort
+          in: query
+          description: Sort field
+          schema:
+            type: string
+            enum:
+              - created
+              - updated
+              - number
+            default: created
+      responses:
+        '200':
+          description: Array of matching tickets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TicketSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /tickets-delete.php/{number}.{format}:
+    delete:
+      operationId: deleteTicket
+      summary: Delete a ticket permanently
+      description: |
+        Permanently delete a ticket and all associated data (thread entries, attachments).
+
+        **This action is irreversible!**
+
+        The `can_delete_tickets` permission is **disabled by default** on all API keys.
+
+        The response is the **deleted ticket number as plain text** (not JSON).
+      tags:
+        - Ticket Management
+      parameters:
+        - $ref: '#/components/parameters/ticketNumber'
+        - $ref: '#/components/parameters/responseFormat'
+      responses:
+        '200':
+          description: Ticket deleted successfully
+          content:
+            text/plain:
+              schema:
+                type: string
+                examples:
+                  - '781258'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ===========================================================================
+  # Statistics
+  # ===========================================================================
+
+  /tickets-stats.php:
+    get:
+      operationId: getTicketStats
+      summary: Get ticket statistics
+      description: |
+        Retrieve comprehensive ticket statistics including global counts,
+        department breakdown, and staff performance metrics.
+      tags:
+        - Statistics
+      responses:
+        '200':
+          description: Ticket statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketStats'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /tickets-statuses.php:
+    get:
+      operationId: listStatuses
+      summary: List all ticket statuses
+      description: |
+        Retrieve all available ticket statuses with their IDs, names, and states.
+        Useful for dynamically looking up status IDs by name.
+      tags:
+        - Statistics
+      responses:
+        '200':
+          description: Array of ticket statuses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TicketStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  # ===========================================================================
+  # Subticket Management
+  # ===========================================================================
+
+  /tickets-subtickets-parent.php/{number}.{format}:
+    get:
+      operationId: getParentTicket
+      summary: Get parent ticket
+      description: |
+        Retrieve the parent ticket of a child ticket (subticket).
+        Returns `{"parent": null}` if the ticket has no parent.
+      tags:
+        - Subticket Management
+      parameters:
+        - name: number
+          in: path
+          required: true
+          description: Child ticket number
+          schema:
+            type: string
+        - $ref: '#/components/parameters/responseFormat'
+      responses:
+        '200':
+          description: Parent ticket or null
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - parent
+                properties:
+                  parent:
+                    oneOf:
+                      - $ref: '#/components/schemas/SubticketInfo'
+                      - type: 'null'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+
+  /tickets-subtickets-list.php/{number}.{format}:
+    get:
+      operationId: getChildTickets
+      summary: Get child tickets
+      description: |
+        Retrieve all child tickets (subtickets) of a parent ticket.
+        Returns `{"children": []}` if no subtickets exist.
+        Only returns direct children (no grandchildren).
+      tags:
+        - Subticket Management
+      parameters:
+        - name: number
+          in: path
+          required: true
+          description: Parent ticket number
+          schema:
+            type: string
+        - $ref: '#/components/parameters/responseFormat'
+      responses:
+        '200':
+          description: Array of child tickets
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - children
+                properties:
+                  children:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SubticketInfo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+
+  /tickets-subtickets-create.php/{parentNumber}.{format}:
+    post:
+      operationId: createSubticketLink
+      summary: Create subticket link
+      description: |
+        Create a parent-child relationship between two existing tickets.
+
+        Validations:
+        1. Parent and child are not the same ticket
+        2. Parent ticket exists
+        3. Child ticket exists
+        4. API key has department access to both tickets
+        5. Child does not already have a parent
+
+        Uses HTTP 422 (not 409) for duplicate relationships because osTicket's
+        `Http::response()` does not support 409.
+      tags:
+        - Subticket Management
+      parameters:
+        - name: parentNumber
+          in: path
+          required: true
+          description: Parent ticket number
+          schema:
+            type: string
+        - $ref: '#/components/parameters/responseFormat'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - childId
+              properties:
+                childId:
+                  type: string
+                  description: Child ticket number
+                  examples:
+                    - '781259'
+      responses:
+        '200':
+          description: Subticket link created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  message:
+                    type: string
+                  parent:
+                    $ref: '#/components/schemas/SubticketInfo'
+                  child:
+                    $ref: '#/components/schemas/SubticketInfo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Child already has a parent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+
+  /tickets-subtickets-unlink.php/{number}.{format}:
+    delete:
+      operationId: unlinkSubticket
+      summary: Unlink subticket
+      description: |
+        Remove the parent-child relationship of a child ticket, making it
+        a standalone ticket again.
+
+        This is safe and reversible — tickets can be re-linked using the create endpoint.
+      tags:
+        - Subticket Management
+      parameters:
+        - name: number
+          in: path
+          required: true
+          description: Child ticket number to unlink
+          schema:
+            type: string
+        - $ref: '#/components/parameters/responseFormat'
+      responses:
+        '200':
+          description: Subticket unlinked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  message:
+                    type: string
+                  child:
+                    $ref: '#/components/schemas/SubticketInfo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+
+# =============================================================================
+# Components
+# =============================================================================
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: osTicket API key with appropriate permissions
+
+  parameters:
+    ticketNumber:
+      name: number
+      in: path
+      required: true
+      description: Ticket number or internal ticket ID
+      schema:
+        type: string
+      examples:
+        byNumber:
+          value: '781258'
+          summary: By ticket number
+        byId:
+          value: '123'
+          summary: By internal ID
+
+    responseFormat:
+      name: format
+      in: path
+      required: true
+      description: Response format
+      schema:
+        type: string
+        enum:
+          - json
+          - xml
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Unauthorized:
+      description: Missing or invalid API key
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Forbidden:
+      description: API key lacks required permission
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotImplemented:
+      description: Feature/Plugin not available (e.g., Subticket Manager Plugin not installed)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    # =========================================================================
+    # Error
+    # =========================================================================
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: boolean
+          const: true
+        message:
+          type: string
+          description: Human-readable error description
+
+    # =========================================================================
+    # Ticket Create / Update
+    # =========================================================================
+
+    CreateTicketRequest:
+      type: object
+      required:
+        - name
+        - email
+        - subject
+        - message
+      properties:
+        name:
+          type: string
+          description: User's full name
+          examples:
+            - 'John Doe'
+        email:
+          type: string
+          format: email
+          description: User's email address
+        subject:
+          type: string
+          description: Ticket subject
+        message:
+          type: string
+          description: Ticket message body
+        phone:
+          type: string
+          description: User's phone number
+        ip:
+          type: string
+          description: Client IP address
+        source:
+          type: string
+          description: Ticket source
+          examples:
+            - 'API'
+            - 'Web'
+            - 'Email'
+        format:
+          type: string
+          enum:
+            - text
+            - html
+            - markdown
+          default: text
+          description: |
+            Message format. `markdown` requires the Markdown Support Plugin
+            to be installed (otherwise returns 501).
+        departmentId:
+          oneOf:
+            - type: string
+            - type: integer
+          description: Department name (case-insensitive) or ID
+        parentTicketId:
+          oneOf:
+            - type: string
+            - type: integer
+          description: Parent ticket number or ID (creates as subticket)
+        topicId:
+          type: integer
+          description: Help Topic ID
+        priority:
+          oneOf:
+            - type: string
+            - type: integer
+          description: Priority name or ID
+        duedate:
+          type: string
+          format: date
+          description: Due date (ISO 8601)
+        autorespond:
+          type: boolean
+          default: true
+          description: Send auto-response email to user
+        attachments:
+          type: array
+          description: |
+            File attachments as Base64 data-URI objects.
+            Max 5 files, 10 MB each.
+          maxItems: 5
+          items:
+            type: object
+            description: Object with filename as key and data-URI as value
+            additionalProperties:
+              type: string
+          examples:
+            - - screenshot.png: 'data:image/png;base64,iVBORw0KGgo...'
+
+    UpdateTicketRequest:
+      type: object
+      properties:
+        statusId:
+          oneOf:
+            - type: string
+            - type: integer
+          description: Status name (case-insensitive) or ID
+          examples:
+            - 'Resolved'
+            - 3
+        departmentId:
+          oneOf:
+            - type: string
+            - type: integer
+          description: Department name (case-insensitive) or ID
+        topicId:
+          type: integer
+          description: Help Topic ID
+        slaId:
+          oneOf:
+            - type: string
+            - type: integer
+          description: SLA Plan name (case-insensitive) or ID
+        staffId:
+          oneOf:
+            - type: string
+            - type: integer
+          description: Staff username or ID
+        priority:
+          oneOf:
+            - type: string
+            - type: integer
+          description: Priority name or ID
+        dueDate:
+          type:
+            - string
+            - 'null'
+          format: date
+          description: Due date (ISO 8601). Set to `null` to clear.
+        parentTicketNumber:
+          type: string
+          description: Parent ticket number (makes this a subticket)
+        note:
+          type: string
+          description: Internal note (visible to staff only)
+        noteTitle:
+          type: string
+          default: API Update
+          description: Title for the internal note
+        noteFormat:
+          type: string
+          enum:
+            - markdown
+            - html
+            - text
+          default: markdown
+          description: Format for the note
+        attachments:
+          type: array
+          description: |
+            File attachments for the note (requires `note` field).
+            Max 5 files, 10 MB each.
+          maxItems: 5
+          items:
+            type: object
+            additionalProperties:
+              type: string
+
+    # =========================================================================
+    # Ticket Response Objects
+    # =========================================================================
+
+    TicketDetail:
+      type: object
+      description: Full ticket details including thread entries
+      properties:
+        id:
+          type: integer
+          description: Internal database ID
+        number:
+          type: string
+          description: Public ticket number
+        subject:
+          type: string
+        statusId:
+          type: integer
+        status:
+          type: string
+        priorityId:
+          type: integer
+        priority:
+          type: string
+        departmentId:
+          type: integer
+        department:
+          type:
+            - string
+            - 'null'
+        topicId:
+          type: integer
+        topic:
+          type:
+            - string
+            - 'null'
+        userId:
+          type: integer
+        user:
+          type: object
+          properties:
+            name:
+              type: string
+            email:
+              type: string
+              format: email
+        staffId:
+          type:
+            - integer
+            - 'null'
+        staff:
+          type:
+            - string
+            - 'null'
+        teamId:
+          type:
+            - integer
+            - 'null'
+        team:
+          type:
+            - string
+            - 'null'
+        slaId:
+          type:
+            - integer
+            - 'null'
+        sla:
+          type:
+            - string
+            - 'null'
+        created:
+          type: string
+          description: Creation timestamp
+        updated:
+          type:
+            - string
+            - 'null'
+          description: Last update timestamp
+        duedate:
+          type:
+            - string
+            - 'null'
+          description: Due date
+        closed:
+          type:
+            - string
+            - 'null'
+          description: Close date (null if not closed)
+        isOverdue:
+          type: boolean
+        isAnswered:
+          type: boolean
+        source:
+          type: string
+        ip:
+          type:
+            - string
+            - 'null'
+        children:
+          type: array
+          description: Internal database IDs of child tickets (not ticket numbers)
+          items:
+            type: integer
+        thread:
+          type: array
+          items:
+            $ref: '#/components/schemas/ThreadEntry'
+
+    ThreadEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum:
+            - message
+            - response
+            - note
+          description: |
+            `message` = user message,
+            `response` = staff response,
+            `note` = internal note (staff only)
+        poster:
+          type: string
+        timestamp:
+          type: string
+        body:
+          type: string
+        staffId:
+          type: integer
+          description: Present on staff responses and notes
+        staff:
+          type: string
+          description: Staff name (present on staff responses and notes)
+        userId:
+          type: integer
+          description: Present on user messages
+
+    TicketSummary:
+      type: object
+      description: Ticket summary (without thread entries)
+      properties:
+        id:
+          type: integer
+        number:
+          type: string
+        subject:
+          type: string
+        statusId:
+          type: integer
+        status:
+          type: string
+        priorityId:
+          type: integer
+        priority:
+          type: string
+        departmentId:
+          type: integer
+        department:
+          type:
+            - string
+            - 'null'
+        topicId:
+          type: integer
+        topic:
+          type:
+            - string
+            - 'null'
+        created:
+          type: string
+        updated:
+          type:
+            - string
+            - 'null'
+        dueDate:
+          type:
+            - string
+            - 'null'
+        staffId:
+          type:
+            - integer
+            - 'null'
+        staff:
+          type:
+            - string
+            - 'null'
+        teamId:
+          type:
+            - integer
+            - 'null'
+        team:
+          type:
+            - string
+            - 'null'
+        slaId:
+          type:
+            - integer
+            - 'null'
+        sla:
+          type:
+            - string
+            - 'null'
+        isOverdue:
+          type: boolean
+        isAnswered:
+          type: boolean
+
+    # =========================================================================
+    # Statistics
+    # =========================================================================
+
+    TicketStats:
+      type: object
+      properties:
+        total:
+          type: integer
+        open:
+          type: integer
+        closed:
+          type: integer
+        overdue:
+          type: integer
+        by_department:
+          type: object
+          description: Object keyed by department name (sorted alphabetically)
+          additionalProperties:
+            $ref: '#/components/schemas/DepartmentStats'
+        by_staff:
+          type: array
+          description: Array sorted alphabetically by staff name
+          items:
+            $ref: '#/components/schemas/StaffStats'
+
+    DepartmentStats:
+      type: object
+      properties:
+        total:
+          type: integer
+        open:
+          type: integer
+        closed:
+          type: integer
+        overdue:
+          type: integer
+
+    StaffStats:
+      type: object
+      properties:
+        staff_id:
+          type: integer
+        staff_name:
+          type: string
+        total:
+          type: integer
+        departments:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              open:
+                type: integer
+              closed:
+                type: integer
+              overdue:
+                type: integer
+
+    TicketStatus:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          examples:
+            - 'Open'
+            - 'Closed'
+        state:
+          type: string
+          enum:
+            - open
+            - closed
+
+    # =========================================================================
+    # Subticket
+    # =========================================================================
+
+    SubticketInfo:
+      type: object
+      description: Compact ticket info used in subticket responses
+      properties:
+        ticket_id:
+          type: integer
+        number:
+          type: string
+        subject:
+          type: string
+        status:
+          type: string
