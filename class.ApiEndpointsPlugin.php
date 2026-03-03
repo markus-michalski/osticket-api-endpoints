@@ -54,8 +54,6 @@ class ApiEndpointsPlugin extends Plugin {
         // Cache config values statically for Signal callbacks
         self::$cached_config = [
             'enabled' => $config->get('enabled'),
-            'endpoint_create_ticket' => $config->get('endpoint_create_ticket'),
-            'endpoint_update_ticket' => $config->get('endpoint_update_ticket'),
             'require_markdown_plugin' => $config->get('require_markdown_plugin'),
             'installed_version' => $config->get('installed_version')
         ];
@@ -236,24 +234,20 @@ class ApiEndpointsPlugin extends Plugin {
         // Note: Dispatcher class has no prepend() method, so we use array_unshift()
 
         // Route 1: POST /tickets.json - Extended ticket creation
-        if (self::$cached_config['endpoint_create_ticket']) {
-            array_unshift($dispatcher->urls,
-                url_post("^/tickets\.(?P<format>xml|json|email)$",
-                    array($this, 'handleTicketCreation')
-                )
-            );
-        }
+        array_unshift($dispatcher->urls,
+            url_post("^/tickets\.(?P<format>xml|json|email)$",
+                array($this, 'handleTicketCreation')
+            )
+        );
 
         // Route 2: PATCH /tickets/{number}.json - Ticket update
-        if (self::$cached_config['endpoint_update_ticket']) {
-            array_unshift($dispatcher->urls,
-                url("^/tickets/(?P<number>[^/]+)\.(?P<format>json|xml)$",
-                    array($this, 'handleTicketUpdate'),
-                    false,  // $args
-                    array('PATCH', 'PUT')  // $method
-                )
-            );
-        }
+        array_unshift($dispatcher->urls,
+            url("^/tickets/(?P<number>[^/]+)\.(?P<format>json|xml)$",
+                array($this, 'handleTicketUpdate'),
+                false,  // $args
+                array('PATCH', 'PUT')  // $method
+            )
+        );
     }
 
     /**
@@ -300,9 +294,11 @@ class ApiEndpointsPlugin extends Plugin {
             // 2. Validate departmentId parameter (if provided)
             if (isset($_POST['departmentId'])) {
                 $deptId = $controller->validateDepartmentId($_POST['departmentId']);
-                // CRITICAL: Map to 'deptId', NOT 'topicId'!
-                // deptId is used for department routing (see class.ticket.php:4279)
+                // Map to 'deptId' for ExtendedTicketApiController::createTicket()
                 $_POST['deptId'] = $deptId;
+                // Remove original key to prevent osTicket core from flagging it
+                // as "Unexpected data received in API request"
+                unset($_POST['departmentId']);
             }
 
             // 3. Validate parentTicketNumber parameter (if provided)

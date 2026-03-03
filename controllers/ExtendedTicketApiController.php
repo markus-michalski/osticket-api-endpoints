@@ -138,9 +138,18 @@ class ExtendedTicketApiController extends TicketApiController {
         $parentTicketNumber = $data['parentTicketNumber'] ?? null;
         $deptId = $data['deptId'] ?? null;
 
-        // Remove them so parent doesn't get confused
-        unset($data['parentTicketNumber']);
-        // Keep deptId in $data for now (parent might use it)
+        // Remove all plugin-specific fields before passing to osTicket core.
+        // This prevents "Unexpected data received in API request" warnings
+        // from osTicket's validateRequestStructure().
+        unset(
+            $data['parentTicketNumber'],
+            $data['deptId'],
+            $data['departmentId'],
+            $data['format'],
+            $data['noteFormat'],
+            $data['note'],
+            $data['noteTitle']
+        );
 
         // Call parent to create the ticket
         $ticket = parent::createTicket($data, $source);
