@@ -164,7 +164,8 @@ class TicketService
                                 'filename' => $file->getName(),
                                 'size' => (int)$file->getSize(),
                                 'mime_type' => $file->getMimeType(),
-                                'inline' => (bool)$attachment->isInline(),
+                                // Attachment model has no isInline() — use ORM property
+                                'inline' => (bool)$attachment->inline,
                             ];
                         }
                     }

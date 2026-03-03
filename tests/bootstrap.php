@@ -657,11 +657,12 @@ if (!class_exists('AttachmentFile')) {
 }
 
 // Mock Attachment class (links a file to a thread entry)
+// Property $inline is public to match osTicket ORM magic property access
 if (!class_exists('Attachment')) {
     class Attachment {
         private $id;
         private $file;
-        private $inline;
+        public $inline;
 
         public function __construct($data) {
             $this->id = $data['id'];
