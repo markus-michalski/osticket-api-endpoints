@@ -542,6 +542,30 @@ class ExtendedTicketApiController extends TicketApiController {
     }
 
     /**
+     * Download attachment content by file ID
+     *
+     * Returns base64-encoded file content with metadata.
+     * Security: Validates API key has read permission and verifies
+     * the file belongs to a ticket attachment (not arbitrary file access).
+     *
+     * @param int $fileId The file ID from ost_file table
+     * @return array {file_id, filename, mime_type, size, content (base64)}
+     * @throws Exception 401 if unauthorized
+     * @throws Exception 403 if file not linked to a ticket attachment
+     * @throws Exception 404 if file not found
+     */
+    public function downloadAttachment(int $fileId): array
+    {
+        $key = $this->requireApiKey();
+        $this->requireReadPermission($key, 'attachments');
+
+        require_once __DIR__ . '/../lib/Services/AttachmentService.php';
+        $attachmentService = AttachmentService::getInstance();
+
+        return $attachmentService->downloadAttachment($fileId);
+    }
+
+    /**
      * Delete a ticket and all associated data
      *
      * @param string|int $ticketNumber Ticket number or internal ticket ID
