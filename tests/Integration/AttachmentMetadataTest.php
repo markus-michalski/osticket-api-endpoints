@@ -200,11 +200,11 @@ class AttachmentMetadataTest extends TestCase
     }
 
     /**
-     * Test that inline attachments are excluded from metadata
+     * Test that inline attachments are included with inline flag set to true
      *
-     * getSeparates() filters out inline attachments (embedded images etc.)
+     * All attachments are returned — the consumer can filter by inline flag
      */
-    public function testInlineAttachmentsAreExcluded(): void
+    public function testInlineAttachmentsIncludedWithFlag(): void
     {
         $inlineFile = new AttachmentFile([
             'id' => 60,
@@ -255,11 +255,13 @@ class AttachmentMetadataTest extends TestCase
         $result = $controller->getTicket('900004');
 
         $entry = $result['thread'][0];
-        // Only the non-inline attachment should appear
-        $this->assertEquals(1, $entry['attachment_count']);
-        $this->assertCount(1, $entry['attachments']);
-        $this->assertEquals('contract.pdf', $entry['attachments'][0]['filename']);
-        $this->assertEquals(61, $entry['attachments'][0]['file_id']);
+        // Both attachments are returned with correct inline flags
+        $this->assertEquals(2, $entry['attachment_count']);
+        $this->assertCount(2, $entry['attachments']);
+        $this->assertEquals('embedded.png', $entry['attachments'][0]['filename']);
+        $this->assertTrue($entry['attachments'][0]['inline']);
+        $this->assertEquals('contract.pdf', $entry['attachments'][1]['filename']);
+        $this->assertFalse($entry['attachments'][1]['inline']);
     }
 
     /**

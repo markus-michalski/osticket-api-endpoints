@@ -676,12 +676,17 @@ if (!class_exists('Attachment')) {
 }
 
 // Mock GenericAttachments class (collection of attachments for a thread entry)
+// Implements IteratorAggregate to match real InstrumentedList behavior
 if (!class_exists('GenericAttachments')) {
-    class GenericAttachments {
+    class GenericAttachments implements IteratorAggregate {
         private $attachments;
 
         public function __construct(array $attachments = []) {
             $this->attachments = $attachments;
+        }
+
+        public function getIterator(): ArrayIterator {
+            return new ArrayIterator($this->attachments);
         }
 
         public function getSeparates() {

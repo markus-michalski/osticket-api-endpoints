@@ -153,20 +153,19 @@ class TicketService
                 $attachments = $entry->getAttachments();
                 if ($attachments) {
                     $attachmentMeta = [];
-                    $separates = $attachments->getSeparates();
-                    if ($separates) {
-                        foreach ($separates as $attachment) {
-                            $file = $attachment->getFile();
-                            if ($file) {
-                                $attachmentMeta[] = [
-                                    'id' => (int)$attachment->getId(),
-                                    'file_id' => (int)$file->getId(),
-                                    'filename' => $file->getName(),
-                                    'size' => (int)$file->getSize(),
-                                    'mime_type' => $file->getMimeType(),
-                                    'inline' => (bool)$attachment->isInline(),
-                                ];
-                            }
+                    // ThreadEntry->attachments is an ORM InstrumentedList,
+                    // not GenericAttachments — iterate directly and filter
+                    foreach ($attachments as $attachment) {
+                        $file = $attachment->getFile();
+                        if ($file) {
+                            $attachmentMeta[] = [
+                                'id' => (int)$attachment->getId(),
+                                'file_id' => (int)$file->getId(),
+                                'filename' => $file->getName(),
+                                'size' => (int)$file->getSize(),
+                                'mime_type' => $file->getMimeType(),
+                                'inline' => (bool)$attachment->isInline(),
+                            ];
                         }
                     }
                     if (!empty($attachmentMeta)) {
