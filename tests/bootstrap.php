@@ -625,6 +625,79 @@ if (!class_exists('Thread')) {
     }
 }
 
+// Mock AttachmentFile class (represents a stored file in ost_file)
+if (!class_exists('AttachmentFile')) {
+    class AttachmentFile {
+        public static $mockData = [];
+        private $id;
+        private $name;
+        private $mimeType;
+        private $size;
+        private $content;
+
+        public function __construct($data) {
+            $this->id = $data['id'];
+            $this->name = $data['name'] ?? 'unknown';
+            $this->mimeType = $data['mime_type'] ?? 'application/octet-stream';
+            $this->size = $data['size'] ?? 0;
+            $this->content = array_key_exists('content', $data) ? $data['content'] : '';
+        }
+
+        public static function lookup($id) {
+            return self::$mockData[$id] ?? null;
+        }
+
+        public function getId() { return $this->id; }
+        public function getName() { return $this->name; }
+        public function getMimeType() { return $this->mimeType; }
+        public function getType() { return $this->mimeType; }
+        public function getSize() { return $this->size; }
+        public function getData() { return $this->content; }
+    }
+}
+
+// Mock Attachment class (links a file to a thread entry)
+if (!class_exists('Attachment')) {
+    class Attachment {
+        private $id;
+        private $file;
+        private $inline;
+
+        public function __construct($data) {
+            $this->id = $data['id'];
+            $this->file = $data['file'] ?? null;
+            $this->inline = $data['inline'] ?? false;
+        }
+
+        public function getId() { return $this->id; }
+        public function getFile() { return $this->file; }
+        public function isInline() { return $this->inline; }
+    }
+}
+
+// Mock GenericAttachments class (collection of attachments for a thread entry)
+if (!class_exists('GenericAttachments')) {
+    class GenericAttachments {
+        private $attachments;
+
+        public function __construct(array $attachments = []) {
+            $this->attachments = $attachments;
+        }
+
+        public function getSeparates() {
+            return array_filter($this->attachments, fn($a) => !$a->isInline());
+        }
+
+        public function getInlines() {
+            return array_filter($this->attachments, fn($a) => $a->isInline());
+        }
+
+        public function count() {
+            return count($this->getSeparates());
+        }
+    }
+}
+
 // Mock ThreadEntry class
 if (!class_exists('ThreadEntry')) {
     class ThreadEntry {
@@ -638,6 +711,7 @@ if (!class_exists('ThreadEntry')) {
         private $userId;
         private $staff;
         private $ticketId;
+        private $attachments;
 
         public function __construct($data) {
             $this->id = $data['id'];
@@ -649,6 +723,7 @@ if (!class_exists('ThreadEntry')) {
             $this->userId = $data['user_id'] ?? null;
             $this->staff = $data['staff'] ?? null;
             $this->ticketId = $data['ticket_id'] ?? null;
+            $this->attachments = $data['attachments'] ?? null;
         }
 
         public static function lookup($id) {
@@ -664,6 +739,7 @@ if (!class_exists('ThreadEntry')) {
         public function getUserId() { return $this->userId; }
         public function getStaff() { return $this->staff; }
         public function getTicketId() { return $this->ticketId; }
+        public function getAttachments() { return $this->attachments; }
     }
 }
 

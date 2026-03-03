@@ -148,6 +148,34 @@ class TicketService
                 $threadEntry['userId'] = $entry->getUserId();
             }
 
+            // Add attachment metadata if thread entry has attachments
+            if (method_exists($entry, 'getAttachments')) {
+                $attachments = $entry->getAttachments();
+                if ($attachments) {
+                    $attachmentMeta = [];
+                    $separates = $attachments->getSeparates();
+                    if ($separates) {
+                        foreach ($separates as $attachment) {
+                            $file = $attachment->getFile();
+                            if ($file) {
+                                $attachmentMeta[] = [
+                                    'id' => (int)$attachment->getId(),
+                                    'file_id' => (int)$file->getId(),
+                                    'filename' => $file->getName(),
+                                    'size' => (int)$file->getSize(),
+                                    'mime_type' => $file->getMimeType(),
+                                    'inline' => (bool)$attachment->isInline(),
+                                ];
+                            }
+                        }
+                    }
+                    if (!empty($attachmentMeta)) {
+                        $threadEntry['attachments'] = $attachmentMeta;
+                        $threadEntry['attachment_count'] = count($attachmentMeta);
+                    }
+                }
+            }
+
             $entries[] = $threadEntry;
         }
 
