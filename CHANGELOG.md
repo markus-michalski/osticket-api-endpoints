@@ -25,6 +25,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 - Nothing yet
 
+## [2.3.1] - 2026-03-03
+
+### Fixed
+- use direct iteration instead of getSeparates() for thread attachments
+
 ## [2.3.0] - 2026-03-03
 
 ### Added
@@ -189,3 +194,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [2.2.1]: https://github.com/markus-michalski/osticket-api-endpoints/releases/tag/v2.2.1
 [2.2.2]: https://github.com/markus-michalski/osticket-api-endpoints/releases/tag/v2.2.2
 [2.3.0]: https://github.com/markus-michalski/osticket-api-endpoints/releases/tag/v2.3.0
+[2.3.1]: https://github.com/markus-michalski/osticket-api-endpoints/releases/tag/v2.3.1
