@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: osTicket API Endpoints
-  version: 2.2.2
+  version: 2.3.2
   description: |
     Extended REST API for osTicket, provided by the **API Endpoints Plugin**.
 
@@ -10,6 +10,7 @@ info:
     - **Search** – Filter by status, department, query string with pagination
     - **Statistics** – Global counts, department & staff breakdowns
     - **Subticket Management** – Parent/child relationships (requires Subticket Manager Plugin)
+    - **Attachment Download** – Download ticket attachments as Base64-encoded content
 
     ## Authentication
 
@@ -39,6 +40,8 @@ tags:
     description: |
       Parent-child ticket relationships.
       Requires **Subticket Manager Plugin** to be installed and active.
+  - name: Attachments
+    description: Download ticket attachment content
 
 security:
   - ApiKeyAuth: []
@@ -520,6 +523,77 @@ paths:
         '501':
           $ref: '#/components/responses/NotImplemented'
 
+  # ===========================================================================
+  # Attachments
+  # ===========================================================================
+
+  /tickets-attachment-download.php/{file_id}.{format}:
+    get:
+      operationId: downloadAttachment
+      summary: Download a ticket attachment
+      description: |
+        Download a ticket attachment by file ID. Returns file metadata and
+        Base64-encoded file content.
+
+        **Security:** The endpoint verifies that the file ID belongs to a ticket
+        attachment (via `ost_ticket_attachment` table) before serving content.
+        Arbitrary `ost_file` access is not possible.
+
+        **File size:** Suitable for files up to ~10 MB. For very large files,
+        consider downloading directly from the osTicket web interface.
+
+        **Finding file IDs:** Use the [GET Retrieve Ticket](#getTicket) endpoint —
+        thread entries with attachments include an `attachments` array containing
+        `file_id` for each attached file.
+      tags:
+        - Attachments
+      parameters:
+        - name: file_id
+          in: path
+          required: true
+          description: File ID from the `attachments` array in a thread entry
+          schema:
+            type: integer
+            minimum: 1
+          examples:
+            byId:
+              value: 29
+              summary: File ID from thread entry attachment metadata
+        - $ref: '#/components/parameters/responseFormat'
+      responses:
+        '200':
+          description: Attachment content with metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttachmentDownloadResponse'
+        '400':
+          description: Invalid file ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: File not linked to a ticket attachment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: File not found in ost_file table
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Failed to read file content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 # =============================================================================
 # Components
 # =============================================================================
@@ -910,6 +984,16 @@ components:
         userId:
           type: integer
           description: Present on user messages
+        attachments:
+          type: array
+          description: |
+            Attachment metadata (only present when thread entry has attachments).
+            Use `file_id` to download content via the attachment download endpoint.
+          items:
+            $ref: '#/components/schemas/AttachmentMetadata'
+        attachment_count:
+          type: integer
+          description: Number of attachments (only present when thread entry has attachments)
 
     TicketSummary:
       type: object
@@ -1054,6 +1138,66 @@ components:
           enum:
             - open
             - closed
+
+    # =========================================================================
+    # Attachments
+    # =========================================================================
+
+    AttachmentMetadata:
+      type: object
+      description: Attachment metadata returned in thread entries
+      properties:
+        id:
+          type: integer
+          description: Attachment ID (internal)
+        file_id:
+          type: integer
+          description: File ID — use this with the attachment download endpoint
+        filename:
+          type: string
+          description: Original filename
+          examples:
+            - 'screenshot.png'
+            - 'report.pdf'
+        size:
+          type: integer
+          description: File size in bytes
+        mime_type:
+          type: string
+          description: MIME type
+          examples:
+            - 'image/png'
+            - 'application/pdf'
+        inline:
+          type: boolean
+          description: Whether the attachment is inline (embedded in message body)
+
+    AttachmentDownloadResponse:
+      type: object
+      description: Attachment download response with Base64-encoded content
+      required:
+        - file_id
+        - filename
+        - mime_type
+        - size
+        - content
+      properties:
+        file_id:
+          type: integer
+          description: File ID
+        filename:
+          type: string
+          description: Original filename
+        mime_type:
+          type: string
+          description: MIME type
+        size:
+          type: integer
+          description: File size in bytes
+        content:
+          type: string
+          format: byte
+          description: Base64-encoded file content
 
     # =========================================================================
     # Subticket
