@@ -86,7 +86,7 @@ class TicketValidatorService
         // Note: Dept::getIdByName() filters by pid=null, which excludes
         // sub-departments, so we do our own lookup instead.
         foreach (Dept::objects() as $dept) {
-            if (strcasecmp($dept->getName(), $name) === 0) {
+            if (strcasecmp(trim($dept->getName()), trim($name)) === 0) {
                 return (int)$dept->getId();
             }
         }
