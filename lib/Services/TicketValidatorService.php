@@ -82,20 +82,13 @@ class TicketValidatorService
      */
     private function resolveDepartmentByName(string $name): int
     {
-        // Try exact match first using osTicket's method
-        $resolvedId = Dept::getIdByName($name);
-
-        // If no exact match, try case-insensitive search
-        if (!$resolvedId) {
-            foreach (Dept::objects()->filter(['ispublic' => 1]) as $dept) {
-                if (strcasecmp($dept->getName(), $name) === 0) {
-                    return (int)$dept->getId();
-                }
+        // Search all active departments by name (case-insensitive)
+        // Note: Dept::getIdByName() filters by pid=null, which excludes
+        // sub-departments, so we do our own lookup instead.
+        foreach (Dept::objects() as $dept) {
+            if (strcasecmp($dept->getName(), $name) === 0) {
+                return (int)$dept->getId();
             }
-        }
-
-        if ($resolvedId) {
-            return (int)$resolvedId;
         }
 
         throw new Exception("Department '{$name}' not found", 404);
