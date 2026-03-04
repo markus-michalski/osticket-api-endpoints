@@ -25,6 +25,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 - Nothing yet
 
+## [2.3.3] - 2026-03-04
+
+### Changed
+- add attachment download endpoint to OpenAPI spec
+
+### Fixed
+- trim whitespace in department name comparison
+- resolve sub-department name lookup failure
+- resolve departmentId "Unexpected data" error on ticket creation
+
 ## [2.3.2] - 2026-03-03
 
 ### Fixed
@@ -201,3 +211,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [2.3.0]: https://github.com/markus-michalski/osticket-api-endpoints/releases/tag/v2.3.0
 [2.3.1]: https://github.com/markus-michalski/osticket-api-endpoints/releases/tag/v2.3.1
 [2.3.2]: https://github.com/markus-michalski/osticket-api-endpoints/releases/tag/v2.3.2
+[2.3.3]: https://github.com/markus-michalski/osticket-api-endpoints/releases/tag/v2.3.3
