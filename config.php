@@ -5,6 +5,11 @@ if (defined('INCLUDE_DIR') && file_exists(INCLUDE_DIR . 'class.plugin.php')) {
     require_once INCLUDE_DIR . 'class.plugin.php';
 }
 
+// Prevent redeclaration when config.php is loaded multiple times (e.g. via file.php)
+if (class_exists('ApiEndpointsConfig')) {
+    return;
+}
+
 /**
  * API Endpoints Plugin Configuration
  *
