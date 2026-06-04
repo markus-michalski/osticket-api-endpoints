@@ -29,6 +29,7 @@ $params = $bootstrap->parseQueryParams([
     'limit' => 20,
     'offset' => 0,
     'sort' => 'created',
+    'email' => null,
 ]);
 
 // Execute with standardized error handling
