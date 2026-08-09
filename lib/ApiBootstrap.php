@@ -229,7 +229,7 @@ class ApiBootstrap
         try {
             $result = $callback();
             $this->sendSuccessResponse($result);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             $this->handleException($e);
         }
     }
@@ -260,10 +260,10 @@ class ApiBootstrap
     /**
      * Handle exception and send appropriate error response
      *
-     * @param Exception $e The exception to handle
+     * @param Throwable $e The exception or error to handle
      * @return never
      */
-    public function handleException(Exception $e): never
+    public function handleException(Throwable $e): never
     {
         $code = $e->getCode();
 
