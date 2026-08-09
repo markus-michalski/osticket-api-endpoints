@@ -37,11 +37,23 @@ class SubticketApiController extends ExtendedTicketApiController {
     }
 
     /**
-     * Get API key - use test key if set, otherwise call requireApiKey()
+     * Resolve the API key - use test key if set, otherwise requireApiKey().
+     *
+     * IMPORTANT - do not rename this back to getApiKey():
+     * osTicket's ApiController already defines getApiKey() and calls it from
+     * getKey() (include/class.api.php:210) to read the X-API-Key header.
+     * Overriding that name with a method that calls requireApiKey() creates
+     * infinite recursion:
+     *
+     *     getApiKey() -> requireApiKey() -> getKey() -> getApiKey() -> ...
+     *
+     * Every cycle adds a stack frame until the memory limit is hit, which
+     * surfaces as "Allowed memory size exhausted in class.api.php on line 210"
+     * on every subticket endpoint.
      *
      * @return API|null API key object
      */
-    protected function getApiKey() {
+    protected function resolveApiKey() {
         if ($this->testApiKey !== null) {
             return $this->testApiKey;
         }
@@ -55,7 +67,7 @@ class SubticketApiController extends ExtendedTicketApiController {
      */
     public function hasSubticketPermission(): bool {
         // Get API key
-        $key = $this->getApiKey();
+        $key = $this->resolveApiKey();
 
         if (!$key) {
             return false;
@@ -104,7 +116,7 @@ class SubticketApiController extends ExtendedTicketApiController {
      * @return bool True if access granted, false otherwise
      */
     private function canAccessTicket(Ticket $ticket): bool {
-        $apiKey = $this->getApiKey();
+        $apiKey = $this->resolveApiKey();
 
         // If no API key, deny access
         if (!$apiKey) {
@@ -384,16 +396,24 @@ class SubticketApiController extends ExtendedTicketApiController {
      * @throws Exception 500 - Subticket Manager Plugin not found or not loaded
      */
     private function getSubticketPlugin() {
-        // Try to instantiate plugin - throws exception if not available
-        try {
-            if (!class_exists('SubticketPlugin')) {
-                throw new Exception('Subticket plugin not available', 501);
+        // osTicket's Plugin extends VerySimpleModel - it is an ORM model bound
+        // to a row in the plugin table, NOT a plain object. Calling
+        // "new SubticketPlugin()" yields an unbound model without id, without
+        // PluginInstance and without config; any later property access runs
+        // into VerySimpleModel's lazy loading and exhausts memory.
+        //
+        // osTicket itself resolves plugins via $class::lookup($id) inside
+        // Plugin::getImpl(). PluginManager::allActive() returns exactly those
+        // properly bound implementations, so we take them from there.
+        if (class_exists('PluginManager')) {
+            foreach (PluginManager::allActive() as $plugin) {
+                if ($plugin instanceof SubticketPlugin) {
+                    return $plugin;
+                }
             }
-            return new SubticketPlugin();
-        } catch (Exception $e) {
-            // Re-throw with consistent message and code
-            throw new Exception('Subticket plugin not available', 501);
         }
+
+        throw new Exception('Subticket plugin not available or not active', 501);
     }
 
     /**
