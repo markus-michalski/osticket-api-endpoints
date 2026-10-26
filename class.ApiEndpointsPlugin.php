@@ -253,16 +253,23 @@ class ApiEndpointsPlugin extends Plugin {
     /**
      * Handle ticket creation with extended parameters
      *
-     * Note: API key validation is handled by ExtendedTicketApiController->requireApiKey()
-     * which is called internally by create() method
+     * The API key is checked first, before any parameter is looked at: this
+     * route replaces osTicket's own POST /tickets.json, and the create() call
+     * below skips its key check because of it. An unauthenticated caller must
+     * neither create a ticket nor learn which departments or ticket numbers
+     * exist from the validation errors.
      *
      * @param string $format Response format (json|xml|email)
      * @return mixed API response
      */
     function handleTicketCreation($format) {
         // Create controller instance (pass null as we'll use $_POST directly)
-        // API key validation is done internally by create() via requireApiKey()
         $controller = new ExtendedTicketApiController(null);
+
+        // Authenticate before anything else; exerr() ends the request with 401
+        if (!($key = $controller->requireApiKey()) || !$key->canCreateTickets()) {
+            return $controller->exerr(401, __('API key not authorized'));
+        }
 
         // Validate and process extended parameters BEFORE ticket creation
         try {
