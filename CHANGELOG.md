@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Email filter (`email` query parameter) for `GET /api/tickets-search.php` (#7, @ianice-lng)
+- Nothing yet
 
 ### Changed
 - Nothing yet
@@ -20,13 +20,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Nothing yet
 
 ### Fixed
-- Resolve subticket plugin via `PluginManager::allActive()` instead of `new SubticketPlugin()`, and rename the colliding `getApiKey()` override to `resolveApiKey()`, fixing a memory-exhaustion crash on all three subticket endpoints (#10, @studio-prisma)
-- Catch `Throwable` instead of `Exception` in the API bootstrap so `TypeError`/`Error` get a proper JSON 500 response instead of an empty one (#9, @studio-prisma)
-- Cast staff name to string before `strcmp()` in ticket stats, fixing a fatal `TypeError` on `GET /api/tickets-stats.php` (#8, @studio-prisma)
-- Updated the test suite's `PluginManager` mock to provide `allActive()`, matching the real osTicket API now used by the subticket plugin resolution fix
+- Nothing yet
 
 ### Security
-- Authenticate ticket creation (API key + `can_create_tickets`) before any parameter is validated, closing an unauthenticated ticket-creation hole and a department/ticket-number enumeration leak via validation error messages (#13, @studio-prisma)
+- Nothing yet
+
+## [2.4.0] - 2026-10-27
+
+### Added
+- add email filter to tickets-search endpoint
+
+### Changed
+- credit PR contributors in README, fix PluginManager test mock
+- add CONTRIBUTING.md with development setup and guidelines
+
+### Fixed
+- authenticate ticket creation before anything else
+- resolve the plugin via PluginManager and stop the getApiKey recursion
+- catch Throwable instead of Exception
+- cast staff name to string before strcmp
 
 ## [2.3.4] - 2026-03-05
 
@@ -221,3 +233,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [2.3.2]: https://github.com/markus-michalski/osticket-api-endpoints/releases/tag/v2.3.2
 [2.3.3]: https://github.com/markus-michalski/osticket-api-endpoints/releases/tag/v2.3.3
 [2.3.4]: https://github.com/markus-michalski/osticket-api-endpoints/releases/tag/v2.3.4
+[Unreleased]: https://github.com/markus-michalski/osticket-api-endpoints/compare/v2.4.0...HEAD
+[2.4.0]: https://github.com/markus-michalski/osticket-api-endpoints/releases/tag/v2.4.0
