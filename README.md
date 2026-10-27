@@ -31,6 +31,15 @@ Extends osTicket's REST API with powerful endpoints for advanced ticket manageme
 - **Deutsch**: https://faq.markus-michalski.net/de/osticket/api-endpoints
 - **API Reference**: https://faq.markus-michalski.net/en/osticket/api-endpoints/api-documentation
 
+## Contributors
+
+Thanks to everyone who has contributed fixes and features:
+
+- [@studio-prisma](https://github.com/studio-prisma) — ticket-creation authentication fix, subticket plugin resolution fix, bootstrap exception handling fix, ticket stats cast fix
+- [@ianice-lng](https://github.com/ianice-lng) — email filter for the ticket search endpoint
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) if you'd like to contribute too.
+
 ## License
 
 Released under the GNU General Public License v2, compatible with osTicket core. See [LICENSE](./LICENSE).
