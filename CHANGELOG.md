@@ -35,10 +35,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - add CONTRIBUTING.md with development setup and guidelines
 
 ### Fixed
-- authenticate ticket creation before anything else
 - resolve the plugin via PluginManager and stop the getApiKey recursion
 - catch Throwable instead of Exception
 - cast staff name to string before strcmp
+
+### Security
+- `POST /api/tickets.json` now requires a valid API key with the `can_create_tickets` permission before any parameter is validated. Versions up to 2.3.4 created tickets without authentication and leaked department IDs and ticket numbers through validation errors (CWE-306, [GHSA-96x5-h4j9-7rfp](https://github.com/studio-prisma/osticket-api-endpoints/security/advisories/GHSA-96x5-h4j9-7rfp)). Upgrade to 2.4.0.
 
 ## [2.3.4] - 2026-03-05
 
