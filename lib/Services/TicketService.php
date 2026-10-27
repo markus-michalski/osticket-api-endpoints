@@ -276,7 +276,7 @@ class TicketService
                 if (!isset($staffStats[$staffId])) {
                     $staffStats[$staffId] = [
                         'staff_id' => $staffId,
-                        'staff_name' => $ticket->getStaff()->getName(),
+                        'staff_name' => (string)$ticket->getStaff()->getName(),
                         'total' => 0,
                         'departments' => []
                     ];
@@ -310,7 +310,7 @@ class TicketService
         $stats['by_department'] = $deptStats;
 
         // Sort staff by name and convert to indexed array
-        usort($staffStats, fn($a, $b) => strcmp($a['staff_name'], $b['staff_name']));
+        usort($staffStats, fn($a, $b) => strcmp((string)$a['staff_name'], (string)$b['staff_name']));
         $stats['by_staff'] = array_values($staffStats);
 
         return $stats;
