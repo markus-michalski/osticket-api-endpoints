@@ -47,6 +47,21 @@ if (!class_exists('PluginManager')) {
         public function registerPlugin($id, $plugin) {
             $this->plugins[$id] = $plugin;
         }
+
+        /**
+         * Mirrors osTicket's real PluginManager::allActive() (class.plugin.php),
+         * which SubticketApiController::getSubticketPlugin() now calls to
+         * resolve a properly bound Plugin instance instead of `new SubticketPlugin()`.
+         *
+         * Evaluated lazily (not at class-load time) so it doesn't matter that
+         * SubticketPlugin is declared later in this file.
+         */
+        public static function allActive() {
+            if (class_exists('SubticketPlugin') && SubticketPlugin::$mockEnabled) {
+                return [new SubticketPlugin()];
+            }
+            return [];
+        }
     }
 }
 
