@@ -341,6 +341,10 @@ if (!class_exists('Ticket')) {
             return true;
         }
 
+        public function loadDynamicData($force = false) {
+            return [];
+        }
+
         public function setStatus($statusId) {
             $this->statusId = $statusId;
             return true;
@@ -515,9 +519,59 @@ if (!class_exists('Priority')) {
             return self::$mockData[$id] ?? null;
         }
 
+        public static function objects() {
+            return array_values(self::$mockData);
+        }
+
         public function getId() { return $this->id; }
         public function getName() { return $this->name; }
+        // Core: priority_desc ("High") and priority tag ("high")
+        public function getDesc() { return $this->name; }
+        public function getTag() { return strtolower((string)$this->name); }
         public function __toString() { return $this->name; }
+    }
+}
+
+// Mock DynamicFormEntry: only the ticket-form priority answer.
+// $withoutPriority lists ticket IDs whose form lacks the field.
+if (!class_exists('DynamicFormEntry')) {
+    class DynamicFormEntry {
+        public static array $withoutPriority = [];
+        private $ticket;
+        private $pendingPriorityId = null;
+
+        private function __construct($ticket) {
+            $this->ticket = $ticket;
+        }
+
+        public static function forTicket($ticketId) {
+            foreach (array_merge(Ticket::$mockData, Ticket::$mockDataByNumber) as $t) {
+                if ($t->getId() == $ticketId) {
+                    return [new self($t)];
+                }
+            }
+            return [];
+        }
+
+        public function getAnswer($name) {
+            if ($name !== 'priority' || in_array($this->ticket->getId(), self::$withoutPriority, true)) {
+                return null;
+            }
+            return $this->ticket->getPriorityId();
+        }
+
+        public function setAnswer($name, $value, $id = false) {
+            if ($name === 'priority') {
+                $this->pendingPriorityId = $id;
+            }
+        }
+
+        public function save() {
+            if ($this->pendingPriorityId !== null) {
+                $this->ticket->setPriorityId($this->pendingPriorityId);
+            }
+            return true;
+        }
     }
 }
 

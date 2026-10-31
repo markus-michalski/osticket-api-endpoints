@@ -267,6 +267,18 @@ class ExtendedTicketApiController extends TicketApiController {
             }
         }
 
+        // Update priorityId if provided. `priority` is the name documented in
+        // openapi.yaml since 2.x and is accepted as an alias.
+        $priorityInput = $data['priorityId'] ?? $data['priority'] ?? null;
+        if ($priorityInput !== null) {
+            $priorityId = $this->validator->validatePriorityId($priorityInput);
+            if ((int)$ticket->getPriorityId() !== $priorityId) {
+                if ($this->setTicketPriority($ticket, $priorityId)) {
+                    $updated = true;
+                }
+            }
+        }
+
         // Update slaId if provided
         if (isset($data['slaId'])) {
             $slaId = $this->validator->validateSlaId($data['slaId']);
@@ -351,6 +363,32 @@ class ExtendedTicketApiController extends TicketApiController {
         }
 
         return $ticket;
+    }
+
+    /**
+     * Set the ticket priority.
+     *
+     * osTicket has no Ticket::setPriority(). The priority is the answer to the
+     * built-in "priority" field of the ticket form, so it is written the same
+     * way core does it on ticket creation: setAnswer() on the form entry, then
+     * save(), which also refreshes the ticket__cdata search view.
+     *
+     * @throws Exception If the ticket has no priority field (400)
+     */
+    private function setTicketPriority(Ticket $ticket, int $priorityId): bool
+    {
+        foreach (DynamicFormEntry::forTicket($ticket->getId()) as $form) {
+            if (!$form->getAnswer('priority')) {
+                continue;
+            }
+            $form->setAnswer('priority', null, $priorityId);
+            $saved = (bool)$form->save();
+            $ticket->loadDynamicData(true);
+
+            return $saved;
+        }
+
+        throw new Exception('Ticket has no priority field', 400);
     }
 
     // =========================================================================

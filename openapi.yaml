@@ -806,11 +806,19 @@ components:
             - type: string
             - type: integer
           description: Staff username or ID
+        priorityId:
+          oneOf:
+            - type: string
+            - type: integer
+          description: Priority name (case-insensitive, e.g. `High`) or ID
+          examples:
+            - 'High'
+            - 4
         priority:
           oneOf:
             - type: string
             - type: integer
-          description: Priority name or ID
+          description: Alias for `priorityId`. Ignored when `priorityId` is set.
         dueDate:
           type:
             - string

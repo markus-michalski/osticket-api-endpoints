@@ -10,6 +10,7 @@
  * - Department ID/name
  * - Topic ID/name
  * - Status ID/name
+ * - Priority ID/name
  * - SLA ID/name
  * - Staff ID/username
  * - Parent ticket (for subtickets)
@@ -190,6 +191,50 @@ class TicketValidatorService
         }
 
         throw new Exception("Status '{$name}' not found", 404);
+    }
+
+    /**
+     * Validate priority ID or name
+     *
+     * @param int|string $priorityId Priority ID or name (e.g. "High")
+     * @return int Validated priority ID
+     * @throws Exception If priority not found (404)
+     */
+    public function validatePriorityId(int|string $priorityId): int
+    {
+        if (is_string($priorityId) && !is_numeric($priorityId)) {
+            $priorityId = $this->resolvePriorityByName($priorityId);
+        }
+
+        $priority = Priority::lookup((int)$priorityId);
+
+        if (!$priority) {
+            throw new Exception('Priority not found', 404);
+        }
+
+        return (int)$priorityId;
+    }
+
+    /**
+     * Resolve priority ID from name
+     *
+     * Matches the description shown in the staff panel ("High") and the
+     * internal tag ("high"), both case-insensitive.
+     *
+     * @param string $name Priority name
+     * @return int Resolved priority ID
+     * @throws Exception If priority not found (404)
+     */
+    private function resolvePriorityByName(string $name): int
+    {
+        foreach (Priority::objects() as $priority) {
+            if (strcasecmp((string)$priority->getDesc(), $name) === 0
+                || strcasecmp((string)$priority->getTag(), $name) === 0) {
+                return (int)$priority->getId();
+            }
+        }
+
+        throw new Exception("Priority '{$name}' not found", 404);
     }
 
     /**

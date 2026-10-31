@@ -1023,4 +1023,83 @@ class UpdateTicketEndpointTest extends TestCase {
         $this->assertNotNull($result->getDueDate());
         $this->assertStringContainsString('2025-01-31', $result->getDueDate());
     }
+
+    // =========================================================================
+    // priorityId
+    // =========================================================================
+
+    /**
+     * Seed priorities and a ticket at "Normal" (2) with an UPDATE key.
+     */
+    private function seedPriorityTicket(int $ticketId, string $number): void {
+        DynamicFormEntry::$withoutPriority = [];
+        foreach ([1 => 'Low', 2 => 'Normal', 3 => 'High', 4 => 'Emergency'] as $id => $name) {
+            Priority::$mockData[$id] = new Priority(['id' => $id, 'name' => $name]);
+        }
+
+        Ticket::$mockDataByNumber[$number] = new Ticket([
+            'id' => $ticketId,
+            'number' => $number,
+            'subject' => 'Priority Ticket',
+            'priority_id' => 2,
+        ]);
+
+        API::$mockData['test-key'] = new API([
+            'key' => 'test-api-key',
+            'can_update_tickets' => true,
+        ]);
+    }
+
+    public function testUpdatePriorityById(): void {
+        $this->seedPriorityTicket(3001, '300001');
+
+        $result = (new ExtendedTicketApiController())->update('300001', ['priorityId' => 4]);
+
+        $this->assertEquals(4, $result->getPriorityId());
+    }
+
+    public function testUpdatePriorityByName(): void {
+        $this->seedPriorityTicket(3002, '300002');
+
+        $result = (new ExtendedTicketApiController())->update('300002', ['priorityId' => 'high']);
+
+        $this->assertEquals(3, $result->getPriorityId());
+    }
+
+    public function testUpdatePriorityViaDocumentedAlias(): void {
+        $this->seedPriorityTicket(3006, '300006');
+
+        $result = (new ExtendedTicketApiController())->update('300006', ['priority' => 'Emergency']);
+
+        $this->assertEquals(4, $result->getPriorityId());
+    }
+
+    public function testUpdatePriorityUnknownNameIsRejected(): void {
+        $this->seedPriorityTicket(3003, '300003');
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionCode(404);
+
+        (new ExtendedTicketApiController())->update('300003', ['priorityId' => 'Urgent']);
+    }
+
+    public function testUpdatePriorityWithoutPriorityFieldIsRejected(): void {
+        $this->seedPriorityTicket(3004, '300004');
+        DynamicFormEntry::$withoutPriority = [3004];
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionCode(400);
+
+        (new ExtendedTicketApiController())->update('300004', ['priorityId' => 3]);
+    }
+
+    public function testUpdatePriorityUnchangedIsNoOp(): void {
+        $this->seedPriorityTicket(3005, '300005');
+        // Would throw if the controller tried to write.
+        DynamicFormEntry::$withoutPriority = [3005];
+
+        $result = (new ExtendedTicketApiController())->update('300005', ['priorityId' => 'Normal']);
+
+        $this->assertEquals(2, $result->getPriorityId());
+    }
 }

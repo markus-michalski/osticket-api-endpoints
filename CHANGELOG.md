@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Nothing yet
 
 ### Fixed
-- Nothing yet
+- Ticket update ignored the priority. `openapi.yaml` documented a `priority` field, but `update()` had no branch for it, so the request succeeded and the priority stayed unchanged. The update now accepts `priorityId` (name or ID, e.g. `High` or `4`) and `priority` as alias, writes it through the ticket form like osTicket core does, and refreshes the search view. Unknown names return 404, a ticket form without priority field returns 400.
 
 ### Security
 - Nothing yet
